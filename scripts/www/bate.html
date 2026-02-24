@@ -1,0 +1,3705 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MC服务器状态查询器 - 25节点增强版</title>
+    <style>
+        /* 全局样式重置 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+        }
+
+        /* 背景样式（暗黑科技风） */
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+            color: #e0e0e0;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('bg.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            opacity: 0.78;
+            z-index: -1;
+        }
+
+        /* 竖屏时切换为 1.PNG */
+        @media (max-aspect-ratio: 1/1) {
+            body::before {
+                background-image: url('1.PNG');
+            }
+        }
+
+        /* 头部样式 */
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(25, 25, 45, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(90deg, #a855f7, #3b82f6);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            color: #b0b0c0;
+            font-size: 1.1rem;
+        }
+
+        /* 主内容容器 */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+            flex: 1;
+        }
+
+        /* 卡片通用样式 */
+        .card {
+            background: rgba(25, 25, 45, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        /* 查询面板样式 */
+        .query-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        label {
+            font-size: 1.1rem;
+            color: #d0d0e0;
+        }
+
+        input {
+            padding: 12px 15px;
+            background: rgba(15, 15, 30, 0.8);
+            border: 1px solid rgba(59, 130, 246, 0.5);
+            border-radius: 8px;
+            color: #e0e0e0;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        input:focus {
+            border-color: #a855f7;
+            box-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px;
+            background: linear-gradient(90deg, #a855f7, #3b82f6);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.3s ease, transform 0.2s ease;
+        }
+
+        button:hover {
+            opacity: 0.9;
+            transform: scale(1.02);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* 结果面板样式 */
+        .result-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: rgba(15, 15, 30, 0.8);
+            border-radius: 10px;
+            border: 1px solid rgba(59, 130, 246, 0.5);
+        }
+
+        .status-item {
+            text-align: center;
+            flex: 1;
+        }
+
+        .status-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+            transition: all 0.5s ease;
+        }
+
+        .status-label {
+            font-size: 0.9rem;
+            color: #b0b0c0;
+            margin-bottom: 5px;
+        }
+
+        /* 标签页样式 */
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            padding: 10px 20px;
+            background: rgba(15, 15, 30, 0.8);
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            border-radius: 8px 8px 0 0;
+            color: #b0b0c0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+
+        .tab-btn.active {
+            background: rgba(168, 85, 247, 0.2);
+            color: #a855f7;
+            border-bottom: 1px solid transparent;
+        }
+
+        .tab-content {
+            padding: 20px;
+            background: rgba(15, 15, 30, 0.8);
+            border-radius: 0 8px 8px 8px;
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            min-height: 200px;
+        }
+
+        /* 服务器详情样式 */
+        .server-details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .detail-item {
+            padding: 15px;
+            background: rgba(25, 25, 45, 0.7);
+            border-radius: 8px;
+            text-align: center;
+            transition: transform 0.3s ease;
+            position: relative;
+        }
+
+        .detail-item:hover {
+            transform: scale(1.05);
+        }
+
+        .detail-label {
+            font-size: 0.9rem;
+            color: #b0b0c0;
+            margin-bottom: 5px;
+        }
+
+        .detail-value {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #3b82f6;
+            transition: all 0.5s ease;
+        }
+
+        .detail-value.online {
+            color: #10b981;
+        }
+
+        .detail-value.offline {
+            color: #ef4444;
+        }
+
+        /* 延迟和API信息样式 */
+        .ping-section {
+            margin-bottom: 25px;
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            color: #a855f7;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(168, 85, 247, 0.3);
+        }
+
+        .ping-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .summary-item {
+            padding: 15px;
+            background: rgba(25, 25, 45, 0.7);
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .summary-label {
+            font-size: 0.9rem;
+            color: #b0b0c0;
+            margin-bottom: 8px;
+        }
+
+        .summary-value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            transition: all 0.5s ease;
+        }
+
+        .api-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .api-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            background: rgba(25, 25, 45, 0.7);
+            border-radius: 8px;
+            transition: background-color 0.3s ease;
+            opacity: 1;
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        .api-item:hover {
+            background: rgba(168, 85, 247, 0.1);
+        }
+
+        .api-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .api-name {
+            font-weight: 600;
+            color: #d0d0e0;
+        }
+
+        .api-region {
+            font-size: 0.8rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+        }
+
+        .api-region.domestic {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+        
+        .api-region.foreign {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+        }
+        
+        .api-region.custom {
+            background: rgba(168, 85, 247, 0.2);
+            color: #a855f7;
+        }
+
+        .api-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .status-indicator.online {
+            background-color: #10b981;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+        }
+
+        .status-indicator.offline {
+            background-color: #ef4444;
+            box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+        }
+
+        .status-indicator.error {
+            background-color: #f59e0b;
+            box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+        }
+
+        .ping-value {
+            font-weight: 600;
+            min-width: 70px;
+            text-align: right;
+            transition: all 0.5s ease;
+        }
+
+        .ping-good {
+            color: #10b981;
+        }
+
+        .ping-medium {
+            color: #f59e0b;
+        }
+
+        .ping-bad {
+            color: #ef4444;
+        }
+
+        /* 在线玩家列表样式 */
+        .players-container {
+            margin-top: 20px;
+        }
+
+        .players-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .players-count {
+            font-size: 1.2rem;
+            color: #a855f7;
+            transition: all 0.5s ease;
+        }
+
+        .player-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+            margin-top: 15px;
+        }
+
+        .player-card {
+            padding: 12px;
+            background: rgba(25, 25, 45, 0.7);
+            border-radius: 8px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 60px;
+            animation: fadeIn 0.5s ease forwards;
+            opacity: 0;
+            transform: translateY(5px);
+        }
+
+        .player-card:nth-child(1) { animation-delay: 0.05s; }
+        .player-card:nth-child(2) { animation-delay: 0.1s; }
+        .player-card:nth-child(3) { animation-delay: 0.15s; }
+        .player-card:nth-child(4) { animation-delay: 0.2s; }
+        .player-card:nth-child(5) { animation-delay: 0.25s; }
+        .player-card:nth-child(6) { animation-delay: 0.3s; }
+        .player-card:nth-child(7) { animation-delay: 0.35s; }
+        .player-card:nth-child(8) { animation-delay: 0.4s; }
+        .player-card:nth-child(9) { animation-delay: 0.45s; }
+        .player-card:nth-child(10) { animation-delay: 0.5s; }
+
+        .player-card:hover {
+            transform: translateY(-5px);
+            background: rgba(168, 85, 247, 0.2);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .player-name {
+            font-weight: 600;
+            color: #e0e0e0;
+            word-break: break-word;
+            font-size: 0.95rem;
+        }
+
+        .no-players {
+            text-align: center;
+            padding: 30px;
+            color: #b0b0c0;
+            font-size: 1.1rem;
+        }
+
+        /* 历史记录样式 */
+        .history-list {
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            padding: 8px 10px;
+            background: rgba(15, 15, 30, 0.8);
+            border-radius: 5px;
+            margin-bottom: 5px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .history-item:hover {
+            background: rgba(59, 130, 246, 0.2);
+        }
+
+        /* 自动刷新状态指示器 */
+        .auto-refresh-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: rgba(25, 25, 45, 0.7);
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .refresh-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #10b981;
+            animation: pulse 2s infinite;
+        }
+
+        .refresh-indicator.inactive {
+            background-color: #ef4444;
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        /* 响应式适配 */
+        @media (max-width: 900px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            .status-bar {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .btn-group {
+                flex-direction: column;
+            }
+            
+            .api-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .ping-summary {
+                grid-template-columns: 1fr;
+            }
+            
+            .player-grid {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            }
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+
+            .card {
+                padding: 15px;
+            }
+
+            .tabs {
+                flex-wrap: wrap;
+            }
+
+            .tab-btn {
+                flex: 1 1 auto;
+                text-align: center;
+                padding: 8px 10px;
+                font-size: 0.9rem;
+            }
+            
+            .server-details-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .player-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* 加载动画 */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* 隐藏元素 */
+        .hidden {
+            display: none !important;
+        }
+        
+        /* 服务器图标样式 */
+        .server-icon-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .server-icon {
+            width: 100px;
+            height: 100px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 2px solid rgba(168, 85, 247, 0.5);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+        
+        .no-icon {
+            width: 120px;
+            height: 120px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #a855f7, #3b82f6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: white;
+            border: 2px solid rgba(168, 85, 247, 0.5);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            transition: all 0.5s ease;
+        }
+        
+        /* 服务器头像样式（统一为120px） */
+        .server-avatar-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        .server-avatar {
+            width: 120px; /* 统一为120px */
+            height: 120px; /* 统一为120px */
+            border-radius: 8px;
+            object-fit: cover;
+            border: 2px solid rgba(168, 85, 247, 0.7);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            transition: transform 0.5s ease, opacity 0.5s ease;
+        }
+        
+        .server-avatar:hover {
+            transform: scale(1.05);
+        }
+        
+        /* 服务器名称样式（与头像并排，左对齐） */
+        .server-name-container {
+            display: flex;
+            align-items: center;
+            margin-left: 10px; /* 头像与名字之间的间距 */
+            flex: 1;
+            justify-content: flex-start; /* 左对齐 */
+        }
+        
+        .server-name {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #a855f7;
+            text-align: left; /* 左对齐 */
+            max-width: 100%;
+            word-break: break-word;
+            padding: 8px 15px;
+            background: rgba(168, 85, 247, 0.15);
+            border-radius: 8px;
+            border: 2px solid rgba(168, 85, 247, 0.4);
+            line-height: 1.3;
+            display: inline-block;
+            white-space: nowrap; /* 保持横着摆放 */
+            overflow: hidden;
+            text-overflow: ellipsis;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            transition: all 0.5s ease;
+        }
+        
+        /* API状态分组标题 */
+        .api-group-title {
+            font-size: 1.1rem;
+            color: #a855f7;
+            margin: 20px 0 10px 0;
+            padding-bottom: 5px;
+            border-bottom: 1px solid rgba(168, 85, 247, 0.3);
+        }
+        
+        /* 节点统计 */
+        .node-stats {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: rgba(25, 25, 45, 0.7);
+            border-radius: 8px;
+            border: 1px solid rgba(168, 85, 247, 0.2);
+        }
+        
+        .node-stat-item {
+            text-align: center;
+            flex: 1;
+            min-width: 100px;
+        }
+        
+        .node-stat-value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #3b82f6;
+            transition: all 0.5s ease;
+        }
+        
+        .node-stat-label {
+            font-size: 0.85rem;
+            color: #b0b0c0;
+            margin-top: 5px;
+        }
+        
+        /* 进度条样式 */
+        .progress-container {
+            margin-top: 25px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(168, 85, 247, 0.2);
+        }
+        
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .progress-title {
+            font-size: 1.1rem;
+            color: #a855f7;
+            font-weight: 600;
+        }
+        
+        .progress-percentage {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #3b82f6;
+            transition: all 0.5s ease;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(15, 15, 30, 0.8);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+            margin-bottom: 8px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981, #3b82f6);
+            border-radius: 10px;
+            width: 0%;
+            transition: width 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+        }
+        
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            color: #b0b0c0;
+        }
+        
+        .progress-info span {
+            font-weight: 600;
+            transition: all 0.5s ease;
+        }
+        
+        .progress-info .current {
+            color: #10b981;
+        }
+        
+        .progress-info .max {
+            color: #a855f7;
+        }
+        
+        /* 服务器详情页布局调整（头像和名字并排，横着摆放，名字左对齐） */
+        .server-details-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(168, 85, 247, 0.2);
+            transition: all 0.5s ease;
+        }
+        
+        /* 新的头像和名字并排布局 */
+        .server-avatar-name-row {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            justify-content: flex-start; /* 确保整个行左对齐 */
+        }
+        
+        /* 底部版权信息栏样式 */
+        .footer-bar {
+            text-align: center;
+            margin-top: 30px;
+            padding: 15px;
+            background: rgba(25, 25, 45, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            border: 1px solid rgba(168, 85, 247, 0.2);
+            color: #b0b0c0;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        
+        .footer-bar a {
+            color: #a855f7;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        .footer-bar a:hover {
+            color: #3b82f6;
+            text-decoration: underline;
+        }
+        
+        .footer-bar .copyright {
+            font-weight: 600;
+            color: #a855f7;
+            margin-bottom: 5px;
+        }
+        
+        .footer-bar .disclaimer {
+            font-size: 0.85rem;
+            color: #9090a0;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        /* 调整整体布局，确保底部栏在页面最底部 */
+        .content-wrapper {
+            flex: 1;
+            width: 100%;
+        }
+        
+        /* 部分玩家警告样式 */
+        .partial-warning {
+            padding: 10px 15px;
+            margin-bottom: 15px;
+            background: rgba(245, 158, 11, 0.15);
+            border-radius: 8px;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            animation: fadeIn 0.5s ease forwards;
+            opacity: 0;
+        }
+        
+        .partial-warning-title {
+            color: #f59e0b;
+            font-weight: 600;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .partial-warning-content {
+            font-size: 0.9rem;
+            color: #e0e0e0;
+            line-height: 1.4;
+        }
+        
+        /* 自定义API管理样式 - 可折叠 */
+        .custom-api-panel {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid rgba(168, 85, 247, 0.3);
+        }
+        
+        .custom-api-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 12px 15px;
+            background: rgba(25, 25, 45, 0.7);
+            border-radius: 8px;
+            border: 1px solid rgba(168, 85, 247, 0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .custom-api-header:hover {
+            background: rgba(168, 85, 247, 0.1);
+            transform: translateY(-2px);
+        }
+        
+        .custom-api-title {
+            font-size: 1.2rem;
+            color: #a855f7;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .custom-api-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 10px;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: rgba(15, 15, 30, 0.5);
+            border-radius: 8px;
+            border: 1px solid rgba(168, 85, 247, 0.2);
+        }
+        
+        .custom-api-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            background: rgba(25, 25, 45, 0.7);
+            border-radius: 6px;
+            margin-bottom: 8px;
+            border: 1px solid rgba(168, 85, 247, 0.2);
+            animation: fadeIn 0.5s ease forwards;
+            opacity: 0;
+        }
+        
+        .custom-api-info {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        .custom-api-name {
+            font-weight: 600;
+            color: #d0d0e0;
+            font-size: 0.95rem;
+        }
+        
+        .custom-api-url {
+            font-size: 0.8rem;
+            color: #b0b0c0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .custom-api-actions {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .api-action-btn {
+            padding: 4px 8px;
+            font-size: 0.75rem;
+            background: rgba(168, 85, 247, 0.3);
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            transition: opacity 0.3s ease;
+        }
+        
+        .api-action-btn:hover {
+            opacity: 0.8;
+        }
+        
+        .api-action-btn.delete {
+            background: rgba(239, 68, 68, 0.7);
+        }
+        
+        .api-action-btn.enable {
+            background: rgba(16, 185, 129, 0.7);
+        }
+        
+        .api-action-btn.disable {
+            background: rgba(245, 158, 11, 0.7);
+        }
+        
+        .no-custom-apis {
+            text-align: center;
+            padding: 20px;
+            color: #b0b0c0;
+            font-style: italic;
+        }
+        
+        /* API添加表单样式 */
+        .api-form {
+            background: rgba(25, 25, 45, 0.7);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            border: 1px solid rgba(168, 85, 247, 0.2);
+            animation: fadeIn 0.5s ease forwards;
+            opacity: 0;
+        }
+        
+        .form-title {
+            font-size: 1rem;
+            color: #a855f7;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        
+        /* API格式提示 */
+        .api-format-hint {
+            font-size: 0.85rem;
+            color: #b0b0c0;
+            margin-top: 5px;
+            line-height: 1.4;
+        }
+        
+        .api-format-hint code {
+            background: rgba(168, 85, 247, 0.2);
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: monospace;
+            color: #a855f7;
+        }
+        
+        /* 自定义API统计 */
+        .custom-api-stats {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            padding: 8px 12px;
+            background: rgba(25, 25, 45, 0.7);
+            border-radius: 6px;
+            border: 1px solid rgba(168, 85, 247, 0.2);
+        }
+        
+        .stats-label {
+            font-size: 0.9rem;
+            color: #b0b0c0;
+        }
+        
+        .stats-value {
+            font-weight: 600;
+            color: #a855f7;
+            transition: all 0.5s ease;
+        }
+        
+        /* 折叠内容 */
+        .custom-api-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease;
+            margin-top: 0;
+        }
+        
+        .custom-api-content.expanded {
+            max-height: 1000px;
+            margin-top: 15px;
+        }
+        
+        /* 折叠图标 */
+        .collapse-icon {
+            transition: transform 0.3s ease;
+            font-size: 1.2rem;
+            color: #a855f7;
+        }
+        
+        .collapse-icon.expanded {
+            transform: rotate(180deg);
+        }
+        
+        /* 国内/国外API状态可折叠面板 */
+        .api-group-panel {
+            margin-bottom: 20px;
+            border: 1px solid rgba(168, 85, 247, 0.2);
+            border-radius: 8px;
+            overflow: hidden;
+            animation: fadeIn 0.5s ease forwards;
+            opacity: 0;
+        }
+        
+        .api-group-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            background: rgba(25, 25, 45, 0.7);
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        
+        .api-group-header:hover {
+            background: rgba(168, 85, 247, 0.1);
+        }
+        
+        .api-group-title-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .api-group-title {
+            font-size: 1.1rem;
+            color: #a855f7;
+            font-weight: 600;
+        }
+        
+        .api-group-stats {
+            font-size: 0.9rem;
+            color: #b0b0c0;
+            background: rgba(168, 85, 247, 0.1);
+            padding: 2px 8px;
+            border-radius: 10px;
+            transition: all 0.5s ease;
+        }
+        
+        .api-group-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease;
+            background: rgba(15, 15, 30, 0.5);
+        }
+        
+        .api-group-content.expanded {
+            max-height: 1000px;
+            padding: 15px;
+        }
+        
+        /* 运行时间专用样式 */
+        .uptime-value {
+            color: #10b981;
+            font-weight: 700;
+            transition: all 0.5s ease;
+        }
+        
+        /* 无感刷新动画 */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* 平滑过渡动画 */
+        .smooth-update {
+            transition: all 0.5s ease;
+        }
+        
+        /* 数值变化动画 */
+        .value-change {
+            animation: pulseValue 0.5s ease;
+        }
+        
+        @keyframes pulseValue {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        /* 刷新指示器动画 */
+        .refreshing {
+            animation: refreshingPulse 1s infinite;
+        }
+        
+        @keyframes refreshingPulse {
+            0% { opacity: 0.5; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.1); }
+            100% { opacity: 0.5; transform: scale(1); }
+        }
+        
+        /* 图标优化 */
+        .icon-emoji {
+            font-size: 1.2em;
+            margin-right: 5px;
+        }
+        
+        /* 状态图标 */
+        .status-icon {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+        
+        /* 自定义图标样式 */
+        .custom-icon {
+            font-size: 1.1em;
+            margin-right: 5px;
+        }
+        
+        /* 无感刷新遮罩 */
+        .refresh-mask {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(25, 25, 45, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: inherit;
+            z-index: 10;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        
+        .refresh-mask.active {
+            opacity: 1;
+        }
+        
+        /* 刷新时间显示 */
+        .refresh-time {
+            font-size: 0.8rem;
+            color: #b0b0c0;
+            margin-left: auto;
+            opacity: 0.7;
+        }
+        
+        /* 服务器详情项的动画延迟 */
+        .detail-item:nth-child(1) { animation-delay: 0.05s; }
+        .detail-item:nth-child(2) { animation-delay: 0.1s; }
+        .detail-item:nth-child(3) { animation-delay: 0.15s; }
+        .detail-item:nth-child(4) { animation-delay: 0.2s; }
+        .detail-item:nth-child(5) { animation-delay: 0.25s; }
+        .detail-item:nth-child(6) { animation-delay: 0.3s; }
+        .detail-item:nth-child(7) { animation-delay: 0.35s; }
+        
+        /* API项的动画延迟 */
+        .api-item:nth-child(1) { animation-delay: 0.05s; }
+        .api-item:nth-child(2) { animation-delay: 0.1s; }
+        .api-item:nth-child(3) { animation-delay: 0.15s; }
+        .api-item:nth-child(4) { animation-delay: 0.2s; }
+        .api-item:nth-child(5) { animation-delay: 0.25s; }
+        .api-item:nth-child(6) { animation-delay: 0.3s; }
+        .api-item:nth-child(7) { animation-delay: 0.35s; }
+        .api-item:nth-child(8) { animation-delay: 0.4s; }
+        .api-item:nth-child(9) { animation-delay: 0.45s; }
+        .api-item:nth-child(10) { animation-delay: 0.5s; }
+        
+        /* 自动刷新开关样式 */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+            margin-left: 10px;
+        }
+        
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(239, 68, 68, 0.7);
+            transition: .4s;
+            border-radius: 24px;
+        }
+        
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .toggle-slider {
+            background-color: rgba(16, 185, 129, 0.7);
+        }
+        
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
+        
+        /* 自动刷新状态文本 */
+        .refresh-status-text {
+            flex: 1;
+        }
+        
+        /* 自动刷新秒数设置样式 */
+        .refresh-interval-container {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-left: 10px;
+        }
+        
+        .refresh-interval-input {
+            width: 60px;
+            padding: 4px 8px;
+            background: rgba(15, 15, 30, 0.8);
+            border: 1px solid rgba(59, 130, 246, 0.5);
+            border-radius: 4px;
+            color: #e0e0e0;
+            text-align: center;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .refresh-interval-input:focus {
+            border-color: #a855f7;
+            box-shadow: 0 0 5px rgba(168, 85, 247, 0.3);
+        }
+        
+        .refresh-interval-label {
+            font-size: 0.85rem;
+            color: #b0b0c0;
+            white-space: nowrap;
+        }
+        
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .auto-refresh-status {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+            
+            .refresh-interval-container {
+                order: 3;
+                width: 100%;
+                justify-content: center;
+                margin-left: 0;
+            }
+            
+            .toggle-switch {
+                margin-left: 0;
+            }
+            
+            .refresh-status-text {
+                min-width: 140px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="content-wrapper">
+        <header>
+            <h1><span class="custom-icon">🎮</span> MC服务器状态查询器 - 25节点增强版</h1>
+            <p>实时查询Minecraft服务器状态、玩家数量、版本及延迟信息 <span class="refresh-time" id="last-refresh-time"></span></p>
+        </header>
+
+        <div class="main-content">
+            <!-- 查询面板 -->
+            <div class="query-panel card">
+                <div class="input-group">
+                    <label for="server-ip"><span class="icon-emoji">🌐</span> 服务器地址 (支持端口)</label>
+                    <input type="text" id="server-ip" placeholder="例如: play.example.com 或 play.example.com:25566" value="">
+                </div>
+
+                <div class="btn-group">
+                    <button id="query-btn"><span class="icon-emoji">🔍</span> 查询服务器</button>
+                    <button id="clear-btn"><span class="icon-emoji">🗑️</span> 清除地址</button>
+                </div>
+
+                <div class="auto-refresh-status">
+                    <div class="refresh-indicator inactive" id="refresh-indicator"></div>
+                    <span class="refresh-status-text" id="refresh-status">自动刷新已停止</span>
+                    <div class="refresh-interval-container">
+                        <span class="refresh-interval-label">刷新间隔:</span>
+                        <input type="number" id="refresh-interval" class="refresh-interval-input" min="1" max="60" value="5" title="设置自动刷新间隔(秒)">
+                        <span class="refresh-interval-label">秒</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="auto-refresh-toggle">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="history-panel">
+                    <h3 style="margin-bottom: 15px; color: #3b82f6;"><span class="icon-emoji">📚</span> 查询历史</h3>
+                    <div class="history-list" id="history-list">
+                        <div class="history-item">暂无查询记录</div>
+                    </div>
+                    <button id="clear-history" style="margin-top: 10px; padding: 8px 12px; font-size: 0.9rem; background: rgba(239, 68, 68, 0.7);"><span class="icon-emoji">🧹</span> 清空历史记录</button>
+                </div>
+            </div>
+
+            <!-- 结果面板 -->
+            <div class="result-panel">
+                <div class="status-bar">
+                    <div class="status-item">
+                        <div class="status-value" id="online-count">--</div>
+                        <div class="status-label"><span class="icon-emoji">👥</span> 在线玩家</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-value" id="max-count">--</div>
+                        <div class="status-label"><span class="icon-emoji">📊</span> 最大容量</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-value" id="server-version">--</div>
+                        <div class="status-label"><span class="icon-emoji">🔧</span> 服务器版本</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-value" id="avg-ping">--</div>
+                        <div class="status-label"><span class="icon-emoji">⚡</span> 国内平均延迟</div>
+                    </div>
+                </div>
+
+                <div class="card" id="result-card">
+                    <!-- 无感刷新遮罩 -->
+                    <div class="refresh-mask" id="refresh-mask">
+                        <div class="loading"></div>
+                    </div>
+                    
+                    <!-- 标签页顺序调整：服务器详情 -> 在线玩家列表 -> 延迟与API状态 -->
+                    <div class="tabs">
+                        <button class="tab-btn active" data-tab="server-info"><span class="icon-emoji">🏠</span> 服务器详情</button>
+                        <button class="tab-btn" data-tab="players-list"><span class="icon-emoji">👤</span> 在线玩家列表</button>
+                        <button class="tab-btn" data-tab="ping-api-info"><span class="icon-emoji">📡</span> 延迟与API状态</button>
+                    </div>
+
+                    <div class="tab-content" id="server-info-tab">
+                        <div id="server-info-content">
+                            <p style="color: #b0b0c0; text-align: center; margin-top: 20px;"><span class="icon-emoji">🔍</span> 请先查询服务器获取详情</p>
+                        </div>
+                    </div>
+
+                    <div class="tab-content hidden" id="players-list-tab">
+                        <div class="players-container">
+                            <div class="players-header">
+                                <h3 style="color: #a855f7;"><span class="icon-emoji">👤</span> 在线玩家</h3>
+                                <div class="players-count" id="players-count">0 位玩家</div>
+                            </div>
+                            <div id="players-content">
+                                <p class="no-players"><span class="icon-emoji">👀</span> 请先查询服务器获取玩家信息</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tab-content hidden" id="ping-api-info-tab">
+                        <!-- 延迟与API状态内容 -->
+                        <div id="ping-api-content">
+                            <p style="color: #b0b0c0; text-align: center; margin-top: 20px;"><span class="icon-emoji">📊</span> 请先查询服务器获取延迟和API信息</p>
+                            <div id="ping-api-details" style="margin-top: 20px;"></div>
+                        </div>
+                        
+                        <!-- 自定义API管理模块 - 可折叠面板 -->
+                        <div id="custom-api-management" class="custom-api-panel">
+                            <div class="custom-api-header" id="custom-api-header">
+                                <div class="custom-api-title">
+                                    <span><span class="icon-emoji">🔧</span> 自定义API管理</span>
+                                    <span class="custom-api-stats">
+                                        <span class="stats-label">已启用:</span>
+                                        <span class="stats-value" id="enabled-api-count">0</span>
+                                        <span class="stats-label">总数:</span>
+                                        <span class="stats-value" id="total-api-count">0</span>
+                                    </span>
+                                </div>
+                                <div class="collapse-icon" id="custom-api-arrow">▼</div>
+                            </div>
+                            
+                            <div class="custom-api-content" id="custom-api-content">
+                                <div class="api-form">
+                                    <div class="form-title"><span class="icon-emoji">➕</span> 添加自定义API</div>
+                                    <div class="input-group">
+                                        <label for="custom-api-name">API名称</label>
+                                        <input type="text" id="custom-api-name" placeholder="例如: 我的私人API">
+                                        <label for="custom-api-url">API URL模板</label>
+                                        <input type="text" id="custom-api-url" placeholder="例如: https://api.example.com/status?ip={address}&port={port}">
+                                        <div class="api-format-hint">
+                                            <span class="icon-emoji">💡</span> 使用 <code>{address}</code> 和 <code>{port}</code> 作为占位符，支持标准的Minecraft服务器状态API格式。
+                                        </div>
+                                    </div>
+                                    <button id="add-custom-api-btn" style="margin-top: 10px; width: 100%;"><span class="icon-emoji">➕</span> 添加自定义API</button>
+                                </div>
+                                
+                                <div class="custom-api-list" id="custom-api-list">
+                                    <div class="no-custom-apis"><span class="icon-emoji">📭</span> 暂无自定义API</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部版权信息栏 -->
+    <div class="footer-bar">
+        <div class="copyright"><span class="icon-emoji">©️</span> Minecraft 服务器查询系统 © 2026</div>
+        <div class="disclaimer">
+            <span class="icon-emoji">⚡</span> 整合25个API查询节点，支持无感刷新和端口检测 | 本工具仅用于查询服务器公开信息，请遵守 Minecraft 使用协议
+        </div>
+    </div>
+
+    <script>
+        // DOM元素
+        const ipInput = document.getElementById('server-ip');
+        const queryBtn = document.getElementById('query-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const clearHistoryBtn = document.getElementById('clear-history');
+        const historyListEl = document.getElementById('history-list');
+        const refreshIndicator = document.getElementById('refresh-indicator');
+        const refreshStatus = document.getElementById('refresh-status');
+        const refreshMask = document.getElementById('refresh-mask');
+        const lastRefreshTimeEl = document.getElementById('last-refresh-time');
+        const autoRefreshToggle = document.getElementById('auto-refresh-toggle');
+        const refreshIntervalInput = document.getElementById('refresh-interval');
+        
+        // 自定义API相关DOM元素
+        const customApiHeader = document.getElementById('custom-api-header');
+        const customApiArrow = document.getElementById('custom-api-arrow');
+        const customApiContent = document.getElementById('custom-api-content');
+        const customApiListEl = document.getElementById('custom-api-list');
+        const enabledApiCountEl = document.getElementById('enabled-api-count');
+        const totalApiCountEl = document.getElementById('total-api-count');
+        const customApiNameInput = document.getElementById('custom-api-name');
+        const customApiUrlInput = document.getElementById('custom-api-url');
+        const addCustomApiBtn = document.getElementById('add-custom-api-btn');
+        
+        // 状态显示元素
+        const onlineCountEl = document.getElementById('online-count');
+        const maxCountEl = document.getElementById('max-count');
+        const serverVersionEl = document.getElementById('server-version');
+        const avgPingEl = document.getElementById('avg-ping');
+        
+        // 标签页元素
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+        
+        // 内容容器
+        const serverInfoContent = document.getElementById('server-info-content');
+        const pingApiContent = document.getElementById('ping-api-content');
+        const pingApiDetails = document.getElementById('ping-api-details');
+        const playersContent = document.getElementById('players-content');
+        const playersCountEl = document.getElementById('players-count');
+        const resultCard = document.getElementById('result-card');
+        
+        // 常量
+        const HISTORY_KEY = 'mc_server_query_history';
+        const CUSTOM_APIS_KEY = 'mc_custom_apis';
+        const AUTO_REFRESH_TOGGLE_KEY = 'mc_auto_refresh_toggle';
+        const REFRESH_INTERVAL_KEY = 'mc_refresh_interval';
+        const MAX_HISTORY = 5;
+        
+        // 变量
+        let refreshInterval = null;
+        let isRequesting = false;
+        let currentAddress = '';
+        let currentQueryAddress = '';
+        let apiResults = [];
+        let playersList = [];
+        let avgPing = null; // 存储平均延迟
+        let serverName = ''; // 存储服务器名称
+        let serverIcon = ''; // 存储服务器图标
+        let customApis = []; // 存储自定义API
+        let isCustomApiExpanded = false; // 自定义API面板是否展开
+        let isDomesticApiExpanded = false; // 国内API状态是否展开
+        let isForeignApiExpanded = false; // 国外API状态是否展开
+        let lastRefreshTime = null; // 上次刷新时间
+        let isAutoRefreshEnabled = false; // 自动刷新是否启用
+        let refreshIntervalSeconds = 5; // 默认刷新间隔为5秒
+
+        // ==================== 工具函数 ====================
+        // 格式化运行时间（秒转可读格式）
+        function formatUptime(seconds) {
+            if (!seconds || seconds <= 0) return '未知';
+            
+            const days = Math.floor(seconds / (24 * 3600));
+            const hours = Math.floor((seconds % (24 * 3600)) / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            
+            if (days > 0) {
+                return `${days}天 ${hours}小时 ${minutes}分钟`;
+            } else if (hours > 0) {
+                return `${hours}小时 ${minutes}分钟`;
+            } else if (minutes > 0) {
+                return `${minutes}分钟 ${secs}秒`;
+            } else {
+                return `${secs}秒`;
+            }
+        }
+
+        // 版本号提取工具
+        function extractVersionFromText(text) {
+            if (!text) return null;
+            const match = String(text).match(/\b\d+\.\d+(\.\d+)?\b/);
+            return match ? match[0] : null;
+        }
+
+        // 清理Minecraft颜色代码
+        function cleanMinecraftText(text) {
+            return String(text || '').replace(/§[0-9a-fk-or]/gi, '').replace(/\$[0-9a-fk-or]/gi, '').trim() || '未知';
+        }
+
+        function formatPlayerCount(count) {
+            return !isNaN(Number(count)) ? Number(count) : 0;
+        }
+
+        // 更新最后刷新时间
+        function updateLastRefreshTime() {
+            const now = new Date();
+            lastRefreshTime = now;
+            const timeStr = now.toLocaleTimeString('zh-CN', { 
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            lastRefreshTimeEl.textContent = `最后刷新: ${timeStr}`;
+        }
+
+        // 历史记录管理
+        function getHistory() {
+            const historyStr = localStorage.getItem(HISTORY_KEY);
+            return historyStr ? JSON.parse(historyStr) : [];
+        }
+        
+        function addToHistory(address) {
+            if (!address.trim()) return;
+            let history = getHistory();
+            history = history.filter(item => item !== address.trim());
+            history.unshift(address.trim());
+            if (history.length > MAX_HISTORY) history = history.slice(0, MAX_HISTORY);
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+            renderHistory();
+        }
+        
+        function renderHistory() {
+            const history = getHistory();
+            historyListEl.innerHTML = '';
+            if (history.length === 0) {
+                historyListEl.innerHTML = '<div class="history-item">暂无查询记录</div>';
+                return;
+            }
+            history.forEach(address => {
+                const item = document.createElement('div');
+                item.className = 'history-item';
+                item.innerHTML = `<span class="custom-icon">📌</span> ${address}`;
+                item.addEventListener('click', () => {
+                    ipInput.value = address;
+                    // 点击历史记录时停止自动刷新并清除结果
+                    stopAutoRefresh();
+                    clearResults();
+                });
+                historyListEl.appendChild(item);
+            });
+        }
+        
+        function clearHistory() {
+            localStorage.removeItem(HISTORY_KEY);
+            renderHistory();
+        }
+
+        // 分割地址和端口
+        function splitAddressAndPort(fullAddress) {
+            fullAddress = fullAddress.trim().replace(/。/g, '.');
+            const lastColon = fullAddress.lastIndexOf(':');
+            let address = fullAddress, port = '';
+            if (lastColon > 0 && lastColon < fullAddress.length - 1) {
+                address = fullAddress.substring(0, lastColon);
+                port = fullAddress.substring(lastColon + 1);
+            }
+            if (port && (isNaN(port) || port < 1 || port > 65535)) {
+                return { valid: false, error: '端口必须是1-65535之间的数字' };
+            }
+            return { valid: true, address, port: port || '25565', fullAddress: address + (port ? ':' + port : '') };
+        }
+
+        // 通用API解析函数（用于自定义API）
+        function genericApiParser(data) {
+            // 尝试解析各种可能的API响应格式
+            let online = false;
+            let players = { now: 0, max: 0 };
+            let version = { name: '未知版本' };
+            let protocol = null;
+            let favicon = null;
+            let serverName = '未知服务器';
+            let playerList = [];
+            
+            // 方法1：检查是否包含常见的在线字段
+            if (data.online !== undefined) {
+                online = Boolean(data.online);
+            } else if (data.status === 'online') {
+                online = true;
+            } else if (data.isOnline !== undefined) {
+                online = Boolean(data.isOnline);
+            }
+            
+            // 方法2：检查玩家信息
+            if (data.players) {
+                if (typeof data.players === 'object') {
+                    players.now = data.players.online || data.players.current || data.players.now || 0;
+                    players.max = data.players.max || data.players.maximum || data.players.limit || 0;
+                    
+                    // 检查玩家列表
+                    if (data.players.list && Array.isArray(data.players.list)) {
+                        playerList = data.players.list.map(p => ({
+                            name: p.name || p.username || '未知玩家',
+                            id: p.id || p.uuid || p.name || p.username || ''
+                        }));
+                    } else if (data.players.sample && Array.isArray(data.players.sample)) {
+                        playerList = data.players.sample.map(p => ({
+                            name: p.name || p.username || '未知玩家',
+                            id: p.id || p.uuid || p.name || p.username || ''
+                        }));
+                    }
+                }
+            }
+            
+            // 方法3：检查版本信息
+            if (data.version) {
+                if (typeof data.version === 'string') {
+                    version.name = data.version;
+                } else if (typeof data.version === 'object') {
+                    version.name = data.version.name || data.version.version || '未知版本';
+                    if (data.version.protocol !== undefined) {
+                        protocol = Number(data.version.protocol);
+                    }
+                }
+            }
+            
+            // 方法4：检查协议号
+            if (data.protocol !== undefined && !isNaN(data.protocol)) {
+                protocol = Number(data.protocol);
+            }
+            
+            // 方法5：检查图标
+            if (data.favicon || data.icon) {
+                favicon = data.favicon || data.icon;
+            }
+            
+            // 方法6：检查服务器名称/MOTD
+            if (data.motd) {
+                if (typeof data.motd === 'string') {
+                    serverName = cleanMinecraftText(data.motd);
+                } else if (data.motd.clean) {
+                    const motdText = Array.isArray(data.motd.clean) ? data.motd.clean.join(' ') : data.motd.clean;
+                    serverName = cleanMinecraftText(motdText);
+                } else if (data.motd.text) {
+                    serverName = cleanMinecraftText(data.motd.text);
+                }
+            } else if (data.description) {
+                if (typeof data.description === 'string') {
+                    serverName = cleanMinecraftText(data.description);
+                } else if (data.description.text) {
+                    serverName = cleanMinecraftText(data.description.text);
+                }
+            }
+            
+            // 如果没有找到在线状态但有玩家信息，则假设服务器在线
+            if (!online && (players.now > 0 || data.players)) {
+                online = true;
+            }
+            
+            return {
+                online,
+                players,
+                version,
+                protocol: isNaN(protocol) ? null : protocol,
+                favicon,
+                serverName,
+                playerList
+            };
+        }
+
+        // ==================== 扩展API定义（共25个节点）====================
+        const defaultApis = [
+            // 国内API (15个)
+            {
+                name: 'mcsrvstat.us',
+                region: 'domestic',
+                buildUrl: (address, port) => 
+                    `https://api.mcsrvstat.us/3/${encodeURIComponent(address)}:${port || 25565}`,
+                parseResponse: (data) => {
+                    let protocol = data.protocol;
+                    if (protocol != null) protocol = Number(protocol); else protocol = null;
+                    
+                    let versionName = data.version;
+                    if (!versionName || !extractVersionFromText(versionName)) {
+                        const motdText = Array.isArray(data.motd?.clean) ? data.motd.clean.join(' ') : (data.motd?.clean || '');
+                        const extracted = extractVersionFromText(motdText);
+                        if (extracted) versionName = extracted;
+                    }
+                    
+                    // 尝试获取服务器名称
+                    let serverName = '';
+                    if (data.motd && data.motd.clean) {
+                        const motdLines = Array.isArray(data.motd.clean) ? data.motd.clean : [data.motd.clean];
+                        if (motdLines.length > 0) {
+                            serverName = motdLines[0].trim();
+                            // 清理颜色代码
+                            serverName = cleanMinecraftText(serverName);
+                        }
+                    }
+                    
+                    // 尝试获取玩家列表
+                    let players = [];
+                    if (data.players?.list && Array.isArray(data.players.list)) {
+                        players = data.players.list.map(player => ({
+                            name: player.name || player,
+                            id: player.id || player.name || player
+                        }));
+                    }
+                    
+                    return {
+                        online: data.online || false,
+                        players: { now: data.players?.online || 0, max: data.players?.max || 0 },
+                        version: { name: versionName || '未知版本' },
+                        protocol: isNaN(protocol) ? null : protocol,
+                        favicon: data.icon || null,
+                        serverName: serverName || '未知服务器',
+                        playerList: players
+                    };
+                }
+            },
+            {
+                name: 'mcstatus.io',
+                region: 'domestic',
+                buildUrl: (address, port) => 
+                    `https://api.mcstatus.io/v2/status/java/${encodeURIComponent(address)}:${port || 25565}`,
+                parseResponse: (data) => {
+                    let protocol = data.version?.protocol;
+                    if (protocol != null) protocol = Number(protocol); else protocol = null;
+                    
+                    let versionName = data.version?.name_raw || data.version?.name;
+                    if (!versionName || !extractVersionFromText(versionName)) {
+                        const motdText = data.motd?.clean || '';
+                        const extracted = extractVersionFromText(motdText);
+                        if (extracted) versionName = extracted;
+                    }
+                    
+                    // 尝试获取运行时间信息
+                    let uptime = null;
+                    if (data.server && data.server.uptime) {
+                        uptime = data.server.uptime;
+                        // 如果uptime是毫秒，转换为秒
+                        if (uptime > 1000000) {
+                            uptime = Math.floor(uptime / 1000);
+                        }
+                    }
+                    
+                    // 尝试获取服务器名称
+                    let serverName = '';
+                    if (data.motd && data.motd.clean) {
+                        const motdText = data.motd.clean;
+                        if (motdText && motdText.trim().length > 0) {
+                            serverName = motdText.trim().split('\n')[0];
+                            serverName = cleanMinecraftText(serverName);
+                        }
+                    }
+                    
+                    // 尝试获取玩家列表
+                    let players = [];
+                    if (data.players?.list && Array.isArray(data.players.list)) {
+                        players = data.players.list.map(player => ({
+                            name: player.name_clean || player.name_raw || '未知玩家',
+                            id: player.uuid || player.name_clean || player.name_raw || ''
+                        }));
+                    }
+                    
+                    return {
+                        online: data.online || false,
+                        players: { now: data.players?.online || 0, max: data.players?.max || 0 },
+                        version: { name: versionName || '未知版本' },
+                        protocol: isNaN(protocol) ? null : protocol,
+                        favicon: data.icon || null,
+                        serverName: serverName || '未知服务器',
+                        uptime: uptime,
+                        uptimeText: uptime ? formatUptime(uptime) : '未知',
+                        playerList: players
+                    };
+                }
+            },
+            {
+                name: 'mcapi.us',
+                region: 'domestic',
+                buildUrl: (address, port) => 
+                    `https://mcapi.us/server/status?ip=${encodeURIComponent(address)}&port=${port || 25565}`,
+                parseResponse: (data) => {
+                    let protocol = null;
+                    if (data.version?.protocol != null) protocol = Number(data.version.protocol);
+                    else if (data.server?.protocol != null) protocol = Number(data.server.protocol);
+                    
+                    let versionName = data.version?.name;
+                    if (!versionName || !extractVersionFromText(versionName)) {
+                        const motdText = Array.isArray(data.motd?.clean) ? data.motd.clean.join(' ') : (data.motd?.clean || '');
+                        const extracted = extractVersionFromText(motdText);
+                        if (extracted) versionName = extracted;
+                    }
+                    
+                    // 尝试获取服务器名称
+                    let serverName = '';
+                    if (data.motd && data.motd.clean) {
+                        const motdLines = Array.isArray(data.motd.clean) ? data.motd.clean : [data.motd.clean];
+                        if (motdLines.length > 0) {
+                            serverName = motdLines[0].trim();
+                            serverName = cleanMinecraftText(serverName);
+                        }
+                    }
+                    
+                    // 尝试获取玩家列表
+                    let players = [];
+                    if (data.players?.sample && Array.isArray(data.players.sample)) {
+                        players = data.players.sample.map(player => ({
+                            name: player.name || '未知玩家',
+                            id: player.id || player.name || ''
+                        }));
+                    }
+                    
+                    return {
+                        online: data.online || false,
+                        players: { now: data.players?.now || 0, max: data.players?.max || 0 },
+                        version: { name: versionName || '未知版本' },
+                        protocol: isNaN(protocol) ? null : protocol,
+                        favicon: data.favicon || null,
+                        serverName: serverName || '未知服务器',
+                        playerList: players
+                    };
+                }
+            },
+            {
+                name: 'mcapis.com',
+                region: 'domestic',
+                buildUrl: (address, port) => 
+                    `https://api.mcapis.com/status/java/${encodeURIComponent(address)}:${port || 25565}`,
+                parseResponse: (data) => {
+                    let protocol = data.version?.protocol;
+                    if (protocol != null) protocol = Number(protocol); else protocol = null;
+                    
+                    let versionName = data.version?.name;
+                    if (!versionName || !extractVersionFromText(versionName)) {
+                        const motdText = data.motd?.clean || '';
+                        const extracted = extractVersionFromText(motdText);
+                        if (extracted) versionName = extracted;
+                    }
+                    
+                    // 尝试获取服务器名称
+                    let serverName = '';
+                    if (data.motd && data.motd.clean) {
+                        const motdText = data.motd.clean;
+                        if (motdText && motdText.trim().length > 0) {
+                            serverName = motdText.trim().split('\n')[0];
+                            serverName = cleanMinecraftText(serverName);
+                        }
+                    }
+                    
+                    // 尝试获取玩家列表
+                    let players = [];
+                    if (data.players?.list && Array.isArray(data.players.list)) {
+                        players = data.players.list.map(player => ({
+                            name: player.name || '未知玩家',
+                            id: player.id || player.name || ''
+                        }));
+                    }
+                    
+                    return {
+                        online: data.online || false,
+                        players: { now: data.players?.online || 0, max: data.players?.max || 0 },
+                        version: { name: versionName || '未知版本' },
+                        protocol: isNaN(protocol) ? null : protocol,
+                        favicon: data.favicon || null,
+                        serverName: serverName || '未知服务器',
+                        playerList: players
+                    };
+                }
+            },
+            {
+                name: 'mcapi.ca',
+                region: 'domestic',
+                buildUrl: (address, port) => 
+                    `https://mcapi.ca/query/${encodeURIComponent(address)}:${port || 25565}`,
+                parseResponse: (data) => {
+                    let protocol = null;
+                    if (data.version?.protocol != null) protocol = Number(data.version.protocol);
+                    else if (data.server?.protocol != null) protocol = Number(data.server.protocol);
+                    
+                    let versionName = data.version?.name;
+                    if (!versionName || !extractVersionFromText(versionName)) {
+                        const motdText = Array.isArray(data.motd?.clean) ? data.motd.clean.join(' ') : (data.motd?.clean || '');
+                        const extracted = extractVersionFromText(motdText);
+                        if (extracted) versionName = extracted;
+                    }
+                    
+                    // 尝试获取服务器名称
+                    let serverName = '';
+                    if (data.motd && data.motd.clean) {
+                        const motdLines = Array.isArray(data.motd.clean) ? data.motd.clean : [data.motd.clean];
+                        if (motdLines.length > 0) {
+                            serverName = motdLines[0].trim();
+                            serverName = cleanMinecraftText(serverName);
+                        }
+                    }
+                    
+                    return {
+                        online: data.online || false,
+                        players: { now: data.players?.now || 0, max: data.players?.max || 0 },
+                        version: { name: versionName || '未知版本' },
+                        protocol: isNaN(protocol) ? null : protocol,
+                        favicon: data.favicon || null,
+                        serverName: serverName || '未知服务器',
+                        playerList: [] // 此API通常不返回玩家列表
+                    };
+                }
+            },
+            // 新增国内API节点
+            {
+                name: 'mcping.net',
+                region: 'domestic',
+                buildUrl: (address, port) => 
+                    `https://api.mcping.net/status/${encodeURIComponent(address)}/${port || 25565}`,
+                parseResponse: genericApiParser
+            },
+            {
+                name: 'minecraft-api.com',
+                region: 'domestic',
+                buildUrl: (address, port) => 
+                    `https://api.minecraft-api.com/status/java/${encodeURIComponent(address)}:${port || 25565}`,
+                parseResponse: genericApiParser
+            },
+            {
+                name: 'mcapi.xdefcon.com',
+                region: 'domestic',
+                buildUrl: (address, port) => 
+                    `https://api.mcapi.xdefcon.com/server/${encodeURIComponent(address)}/full/json`,
+                parseResponse: genericApiParser
+            },
+            {
+                name: 'minecraftpocket-servers.com',
+                region: 'domestic',
+                buildUrl: (address, port) => 
+                    `https://api.minecraftpocket-servers.com/status/${encodeURIComponent(address)}:${port || 25565}`,
+                parseResponse: genericApiParser
+            },
+            {
+                name: 'minecraft-mp.com',
+                region: 'domestic',
+                buildUrl: (address, port) => 
+                    `https://api.minecraft-mp.com/status/${encodeURIComponent(address)}/${port || 25565}`,
+                parseResponse: genericApiParser
+            },
+            {
+                name: 'mcapi.aternos.org',
+                region: 'domestic',
+                buildUrl: (address, port) => 
+                    `https://api.mcapi.aternos.org/status/${encodeURIComponent(address)}:${port || 25565}`,
+                parseResponse: genericApiParser
+            },
+            {
+                name: 'mcapi.gg',
+                region: 'domestic',
+                buildUrl: (address, port) => 
+                    `https://api.mcapi.gg/status/java/${encodeURIComponent(address)}:${port || 25565}`,
+                parseResponse: genericApiParser
+            },
+            {
+                name: 'mcapi.online',
+                region: 'domestic',
+                buildUrl: (address, port) => 
+                    `https://api.mcapi.online/server/${encodeURIComponent(address)}:${port || 25565}`,
+                parseResponse: genericApiParser
+            },
+            {
+                name: 'minecraft-server-status.com',
+                region: 'domestic',
+                buildUrl: (address, port) => 
+                    `https://api.minecraft-server-status.com/v2/status/${encodeURIComponent(address)}:${port || 25565}`,
+                parseResponse: genericApiParser
+            },
+            {
+                name: 'mcstatus.solar',
+                region: 'domestic',
+                buildUrl: (address, port) => 
+                    `https://api.mcstatus.solar/status/java/${encodeURIComponent(address)}:${port || 25565}`,
+                parseResponse: genericApiParser
+            },
+            
+            // 国外API (10个)
+            {
+                name: 'minetools.eu',
+                region: 'foreign',
+                buildUrl: (address, port) => 
+                    `https://api.minetools.eu/ping/${encodeURIComponent(address)}/${port || 25565}`,
+                parseResponse: (data) => {
+                    if (data.error) {
+                        return { 
+                            online: false, 
+                            players: { now: 0, max: 0 }, 
+                            version: { name: '未知版本' }, 
+                            protocol: null, 
+                            favicon: null,
+                            serverName: '未知服务器',
+                            playerList: []
+                        };
+                    }
+                    
+                    let protocol = data.version?.protocol;
+                    if (protocol != null) protocol = Number(protocol); else protocol = null;
+                    
+                    let versionName = data.version?.name;
+                    if (!versionName || !extractVersionFromText(versionName)) {
+                        // 没有 MOTD
+                    }
+                    
+                    // 尝试获取服务器名称
+                    let serverName = '';
+                    if (data.description && data.description.text) {
+                        serverName = cleanMinecraftText(data.description.text);
+                    }
+                    
+                    // 尝试获取玩家列表
+                    let players = [];
+                    if (data.players?.sample && Array.isArray(data.players.sample)) {
+                        players = data.players.sample.map(player => ({
+                            name: player.name || '未知玩家',
+                            id: player.id || player.name || ''
+                        }));
+                    }
+                    
+                    return {
+                        online: true,
+                        players: { now: data.players?.online || 0, max: data.players?.max || 0 },
+                        version: { name: versionName || '未知版本' },
+                        protocol: isNaN(protocol) ? null : protocol,
+                        favicon: data.favicon || null,
+                        serverName: serverName || '未知服务器',
+                        playerList: players
+                    };
+                }
+            },
+            {
+                name: 'eu.mcapi.io',
+                region: 'foreign',
+                buildUrl: (address, port) => 
+                    `https://eu.mcapi.io/server/${encodeURIComponent(address)}/${port || 25565}`,
+                parseResponse: (data) => {
+                    let protocol = data.protocol;
+                    if (protocol != null) protocol = Number(protocol); else protocol = null;
+                    
+                    let versionName = data.version?.name;
+                    if (!versionName || !extractVersionFromText(versionName)) {
+                        // 没有 MOTD，无法提取
+                    }
+                    
+                    return {
+                        online: data.online || false,
+                        players: { now: data.players?.online || 0, max: data.players?.max || 0 },
+                        version: { name: versionName || '未知版本' },
+                        protocol: isNaN(protocol) ? null : protocol,
+                        favicon: data.favicon || null,
+                        serverName: '未知服务器', // 此API通常不返回服务器名称
+                        playerList: [] // 此API通常不返回玩家列表
+                    };
+                }
+            },
+            {
+                name: 'mcapi.cc',
+                region: 'foreign',
+                buildUrl: (address, port) => 
+                    `https://mcapi.cc/${encodeURIComponent(address)}:${port || 25565}`,
+                parseResponse: (data) => {
+                    // 这个API返回格式可能不同，需要适配
+                    if (data.error) {
+                        return { 
+                            online: false, 
+                            players: { now: 0, max: 0 }, 
+                            version: { name: '未知版本' }, 
+                            protocol: null, 
+                            favicon: null,
+                            serverName: '未知服务器',
+                            playerList: []
+                        };
+                    }
+                    
+                    let protocol = data.protocol;
+                    if (protocol != null) protocol = Number(protocol); else protocol = null;
+                    
+                    let versionName = data.version;
+                    if (!versionName || !extractVersionFromText(versionName)) {
+                        const motdText = Array.isArray(data.motd) ? data.motd.join(' ') : (data.motd || '');
+                        const extracted = extractVersionFromText(motdText);
+                        if (extracted) versionName = extracted;
+                    }
+                    
+                    // 尝试获取服务器名称
+                    let serverName = '';
+                    if (data.motd) {
+                        const motdText = Array.isArray(data.motd) ? data.motd.join(' ') : data.motd;
+                        if (motdText && motdText.trim().length > 0) {
+                            serverName = motdText.trim().split('\n')[0];
+                            serverName = cleanMinecraftText(serverName);
+                        }
+                    }
+                    
+                    return {
+                        online: data.online || false,
+                        players: { now: data.players?.online || 0, max: data.players?.max || 0 },
+                        version: { name: versionName || '未知版本' },
+                        protocol: isNaN(protocol) ? null : protocol,
+                        favicon: null, // 这个API通常不返回图标
+                        serverName: serverName || '未知服务器',
+                        playerList: [] // 此API通常不返回玩家列表
+                    };
+                }
+            },
+            // 新增国外API节点
+            {
+                name: 'mcapi.de',
+                region: 'foreign',
+                buildUrl: (address, port) => 
+                    `https://api.mcapi.de/server/${encodeURIComponent(address)}:${port || 25565}`,
+                parseResponse: genericApiParser
+            },
+            {
+                name: 'mcapi.eu',
+                region: 'foreign',
+                buildUrl: (address, port) => 
+                    `https://api.mcapi.eu/server/${encodeURIComponent(address)}:${port || 25565}`,
+                parseResponse: genericApiParser
+            },
+            {
+                name: 'api.minetools.eu',
+                region: 'foreign',
+                buildUrl: (address, port) => 
+                    `https://api.minetools.eu/query/${encodeURIComponent(address)}/${port || 25565}`,
+                parseResponse: genericApiParser
+            },
+            {
+                name: 'mcstatus.io (国际)',
+                region: 'foreign',
+                buildUrl: (address, port) => 
+                    `https://api.mcstatus.io/v2/status/java/${encodeURIComponent(address)}:${port || 25565}`,
+                parseResponse: genericApiParser
+            },
+            {
+                name: 'mcsrvstat.us (国际)',
+                region: 'foreign',
+                buildUrl: (address, port) => 
+                    `https://api.mcsrvstat.us/2/${encodeURIComponent(address)}:${port || 25565}`,
+                parseResponse: genericApiParser
+            },
+            {
+                name: 'mcapi.us (国际)',
+                region: 'foreign',
+                buildUrl: (address, port) => 
+                    `https://mcapi.us/server/status?ip=${encodeURIComponent(address)}&port=${port || 25565}`,
+                parseResponse: genericApiParser
+            },
+            {
+                name: 'minecraft-api.net',
+                region: 'foreign',
+                buildUrl: (address, port) => 
+                    `https://api.minecraft-api.net/status/${encodeURIComponent(address)}:${port || 25565}`,
+                parseResponse: genericApiParser
+            },
+            {
+                name: 'mcstatus.app',
+                region: 'foreign',
+                buildUrl: (address, port) => 
+                    `https://api.mcstatus.app/v2/status/java/${encodeURIComponent(address)}:${port || 25565}`,
+                parseResponse: genericApiParser
+            }
+        ];
+
+        // ==================== 合并多个API结果 ====================
+        function mergeApiResults(resultsWithPing) {
+            if (resultsWithPing.length === 0) return null;
+            
+            apiResults = resultsWithPing; // 保存API结果用于显示
+
+            const results = resultsWithPing.map(r => r.data);
+            
+            // 找到第一个在线服务器作为基础
+            let base = results.find(r => r && r.online === true) || results[0];
+            
+            if (!base) return null;
+            
+            // 玩家数量处理 - 使用中位数避免异常值
+            let maxNow = 0;
+            let maxMax = 0;
+
+            // 先找到所有返回在线状态的API
+            const onlineResults = results.filter(r => r && r.online === true);
+
+            if (onlineResults.length > 0) {
+                // 使用中位数而不是最大值，避免异常值
+                const nowValues = onlineResults.map(r => r.players.now || 0).sort((a, b) => a - b);
+                const maxValues = onlineResults.map(r => r.players.max || 0).sort((a, b) => a - b);
+                
+                // 取中位数
+                const midIndex = Math.floor(nowValues.length / 2);
+                maxNow = nowValues[midIndex];
+                maxMax = maxValues[midIndex];
+                
+                console.log('玩家数量统计:', {
+                    onlineAPIs: onlineResults.length,
+                    nowValues: nowValues,
+                    maxValues: maxValues,
+                    medianNow: maxNow,
+                    medianMax: maxMax
+                });
+            } else {
+                // 如果没有在线结果，使用第一个结果的值
+                maxNow = base.players.now || 0;
+                maxMax = base.players.max || 0;
+            }
+
+            base.players.now = maxNow;
+            base.players.max = maxMax;
+
+            // 其他字段补充
+            for (const res of results) {
+                if (!res || res === base) continue;
+                if ((!base.version.name || base.version.name === '未知版本') && res.version.name && res.version.name !== '未知版本')
+                    base.version.name = res.version.name;
+                if ((base.protocol == null || isNaN(base.protocol)) && res.protocol != null && !isNaN(res.protocol))
+                    base.protocol = res.protocol;
+                if (!base.favicon && res.favicon) base.favicon = res.favicon;
+                if ((!base.serverName || base.serverName === '未知服务器') && res.serverName && res.serverName !== '未知服务器')
+                    base.serverName = res.serverName;
+            }
+
+            // 合并玩家列表（去重）
+            playersList = [];
+            const playerNames = new Set();
+            
+            resultsWithPing.forEach(result => {
+                if (result.data && result.data.playerList && Array.isArray(result.data.playerList)) {
+                    result.data.playerList.forEach(player => {
+                        const playerName = cleanMinecraftText(player.name || '');
+                        if (playerName && playerName !== '未知玩家' && !playerNames.has(playerName)) {
+                            playerNames.add(playerName);
+                            playersList.push({
+                                name: playerName,
+                                id: player.id || playerName
+                            });
+                        }
+                    });
+                }
+            });
+            
+            console.log('合并后的玩家列表:', playersList);
+
+            // 计算国内延迟（国内节点，前15个） - 忽略失败的节点
+            const domesticPings = resultsWithPing
+                .filter((item, idx) => idx < 15 && item.ping !== null && item.success && item.data && item.data.online)
+                .map(item => item.ping);
+            
+            let chinaMin = null, chinaMax = null;
+            if (domesticPings.length > 0) {
+                chinaMin = Math.min(...domesticPings);
+                chinaMax = Math.max(...domesticPings);
+                // 计算平均延迟（算术平均）
+                const sum = domesticPings.reduce((a, b) => a + b, 0);
+                avgPing = Math.round(sum / domesticPings.length);
+                
+                // 记录成功节点数量
+                console.log(`国内成功节点: ${domesticPings.length}个, 延迟: ${domesticPings.join(', ')}ms, 平均: ${avgPing}ms`);
+            } else {
+                avgPing = null;
+                console.log('国内所有节点均失败');
+            }
+            
+            // 计算国外延迟（国外节点，后10个）
+            const foreignPings = resultsWithPing
+                .filter((item, idx) => idx >= 15 && idx < 25 && item.ping !== null && item.success && item.data && item.data.online)
+                .map(item => item.ping);
+            
+            let foreignMin = null, foreignMax = null, foreignAvg = null;
+            if (foreignPings.length > 0) {
+                foreignMin = Math.min(...foreignPings);
+                foreignMax = Math.max(...foreignPings);
+                const foreignSum = foreignPings.reduce((a, b) => a + b, 0);
+                foreignAvg = Math.round(foreignSum / foreignPings.length);
+                
+                console.log(`国外成功节点: ${foreignPings.length}个, 延迟: ${foreignPings.join(', ')}ms, 平均: ${foreignAvg}ms`);
+            }
+
+            // 合并服务器运行时间信息（取最长的运行时间）
+            let serverUptime = null;
+            let serverUptimeText = '未知';
+            
+            // 查找所有包含运行时间的结果，取最长的运行时间
+            const uptimeResults = results.filter(r => r && r.uptime && r.uptime > 0);
+            if (uptimeResults.length > 0) {
+                // 取最长的运行时间
+                serverUptime = Math.max(...uptimeResults.map(r => r.uptime));
+                serverUptimeText = formatUptime(serverUptime);
+                
+                // 记录日志
+                console.log('服务器运行时间统计:', {
+                    uptimeAPIs: uptimeResults.length,
+                    uptimes: uptimeResults.map(r => r.uptime),
+                    maxUptime: serverUptime,
+                    formatted: serverUptimeText
+                });
+            }
+            
+            // 添加到base对象
+            base.uptime = serverUptime;
+            base.uptimeText = serverUptimeText;
+
+            return { 
+                data: base, 
+                chinaMin, 
+                chinaMax, 
+                foreignMin,
+                foreignMax,
+                foreignAvg,
+                players: playersList 
+            };
+        }
+
+        // 带超时的fetch请求
+        async function fetchWithTimeout(url, timeout = 4000) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
+            
+            try {
+                const response = await fetch(url, { 
+                    method: 'GET', 
+                    mode: 'cors',
+                    signal: controller.signal 
+                });
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return await response.json();
+            } catch (error) {
+                clearTimeout(timeoutId);
+                throw error;
+            }
+        }
+
+        // ==================== 自定义API管理 ====================
+        // 加载自定义API
+        function loadCustomApis() {
+            const customApisStr = localStorage.getItem(CUSTOM_APIS_KEY);
+            customApis = customApisStr ? JSON.parse(customApisStr) : [];
+            renderCustomApis();
+        }
+        
+        // 保存自定义API
+        function saveCustomApis() {
+            localStorage.setItem(CUSTOM_APIS_KEY, JSON.stringify(customApis));
+            renderCustomApis();
+        }
+        
+        // 添加自定义API
+        function addCustomApi(name, urlTemplate) {
+            if (!name.trim()) {
+                alert('请输入API名称');
+                return false;
+            }
+            
+            if (!urlTemplate.trim()) {
+                alert('请输入API URL模板');
+                return false;
+            }
+            
+            // 检查URL模板是否包含占位符
+            if (!urlTemplate.includes('{address}') || !urlTemplate.includes('{port}')) {
+                if (!confirm('URL模板中未包含 {address} 和 {port} 占位符，可能无法正常工作。是否继续添加？')) {
+                    return false;
+                }
+            }
+            
+            // 检查是否已存在相同名称的API
+            if (customApis.some(api => api.name === name.trim())) {
+                alert('已存在相同名称的API');
+                return false;
+            }
+            
+            // 添加自定义API
+            const newApi = {
+                id: Date.now().toString(),
+                name: name.trim(),
+                urlTemplate: urlTemplate.trim(),
+                enabled: true,
+                region: 'custom'
+            };
+            
+            customApis.push(newApi);
+            saveCustomApis();
+            
+            // 清空输入框
+            customApiNameInput.value = '';
+            customApiUrlInput.value = '';
+            
+            return true;
+        }
+        
+        // 删除自定义API
+        function deleteCustomApi(id) {
+            if (!confirm('确定要删除此自定义API吗？')) {
+                return;
+            }
+            
+            customApis = customApis.filter(api => api.id !== id);
+            saveCustomApis();
+        }
+        
+        // 启用/禁用自定义API
+        function toggleCustomApi(id) {
+            const api = customApis.find(api => api.id === id);
+            if (api) {
+                api.enabled = !api.enabled;
+                saveCustomApis();
+            }
+        }
+        
+        // 渲染自定义API列表
+        function renderCustomApis() {
+            customApiListEl.innerHTML = '';
+            
+            if (customApis.length === 0) {
+                customApiListEl.innerHTML = '<div class="no-custom-apis"><span class="icon-emoji">📭</span> 暂无自定义API</div>';
+                updateApiStats();
+                return;
+            }
+            
+            customApis.forEach((api, index) => {
+                const apiItem = document.createElement('div');
+                apiItem.className = 'custom-api-item';
+                apiItem.style.animationDelay = `${index * 0.05}s`;
+                apiItem.innerHTML = `
+                    <div class="custom-api-info">
+                        <div class="custom-api-name"><span class="custom-icon">🔧</span> ${api.name} ${api.enabled ? '✅' : '⛔'}</div>
+                        <div class="custom-api-url" title="${api.urlTemplate}">${api.urlTemplate}</div>
+                    </div>
+                    <div class="custom-api-actions">
+                        <button class="api-action-btn ${api.enabled ? 'disable' : 'enable'}" data-action="toggle" data-id="${api.id}">
+                            ${api.enabled ? '<span class="icon-emoji">⛔</span> 禁用' : '<span class="icon-emoji">✅</span> 启用'}
+                        </button>
+                        <button class="api-action-btn delete" data-action="delete" data-id="${api.id}"><span class="icon-emoji">🗑️</span> 删除</button>
+                    </div>
+                `;
+                customApiListEl.appendChild(apiItem);
+            });
+            
+            updateApiStats();
+            
+            // 添加事件监听器
+            document.querySelectorAll('.api-action-btn[data-action="delete"]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const id = this.getAttribute('data-id');
+                    deleteCustomApi(id);
+                });
+            });
+            
+            document.querySelectorAll('.api-action-btn[data-action="toggle"]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const id = this.getAttribute('data-id');
+                    toggleCustomApi(id);
+                });
+            });
+        }
+        
+        // 更新API统计信息
+        function updateApiStats() {
+            const enabledCount = customApis.filter(api => api.enabled).length;
+            const totalCount = customApis.length;
+            
+            enabledApiCountEl.textContent = enabledCount;
+            totalApiCountEl.textContent = totalCount;
+            
+            // 添加数值变化动画
+            enabledApiCountEl.classList.add('value-change');
+            totalApiCountEl.classList.add('value-change');
+            setTimeout(() => {
+                enabledApiCountEl.classList.remove('value-change');
+                totalApiCountEl.classList.remove('value-change');
+            }, 500);
+        }
+        
+        // 切换自定义API面板的展开状态
+        function toggleCustomApiPanel() {
+            isCustomApiExpanded = !isCustomApiExpanded;
+            
+            if (isCustomApiExpanded) {
+                customApiContent.classList.add('expanded');
+                customApiArrow.classList.add('expanded');
+            } else {
+                customApiContent.classList.remove('expanded');
+                customApiArrow.classList.remove('expanded');
+            }
+        }
+        
+        // 构建所有API列表（默认API + 自定义API）
+        function getAllApis() {
+            const enabledCustomApis = customApis
+                .filter(api => api.enabled)
+                .map(api => ({
+                    name: api.name,
+                    region: 'custom',
+                    buildUrl: (address, port) => {
+                        // 替换占位符
+                        let url = api.urlTemplate
+                            .replace(/{address}/g, encodeURIComponent(address))
+                            .replace(/{port}/g, port || '25565');
+                        return url;
+                    },
+                    parseResponse: genericApiParser
+                }));
+            
+            return [...defaultApis, ...enabledCustomApis];
+        }
+
+        // ==================== 查询函数 ====================
+        async function queryServerStatus(isAutoRefresh = false) {
+            if (isRequesting) return;
+            
+            const full = ipInput.value;
+            if (!full.trim()) {
+                if (!isAutoRefresh) alert('请输入服务器地址');
+                return;
+            }
+            
+            const res = splitAddressAndPort(full);
+            if (!res.valid) {
+                if (!isAutoRefresh) alert(res.error);
+                return;
+            }
+            
+            currentAddress = res.fullAddress;
+            
+            if (!isAutoRefresh) {
+                disableButtons();
+                queryBtn.innerHTML = '<span class="loading"></span> 查询中...';
+                // 显示刷新遮罩
+                refreshMask.classList.add('active');
+            } else {
+                // 自动刷新时显示刷新指示器动画
+                refreshIndicator.classList.add('refreshing');
+            }
+            
+            isRequesting = true;
+
+            const resultsWithPing = [];
+            
+            // 获取所有API（包括自定义API）
+            const allApis = getAllApis();
+
+            // 并行查询所有API（使用超时）
+            const promises = allApis.map(async (api, index) => {
+                const start = Date.now();
+                try {
+                    const url = api.buildUrl(res.address, res.port);
+                    // 使用带超时的fetch
+                    const rawData = await fetchWithTimeout(url, 3000);
+                    const ping = Date.now() - start;
+                    const parsed = api.parseResponse(rawData);
+                    return { 
+                        apiName: api.name, 
+                        region: api.region,
+                        ping, 
+                        data: parsed, 
+                        success: true,
+                        index: index
+                    };
+                } catch (e) {
+                    console.warn(`API ${api.name} 失败:`, e.message);
+                    return { 
+                        apiName: api.name, 
+                        region: api.region, 
+                        ping: null, 
+                        data: null, 
+                        success: false, 
+                        error: e.message,
+                        index: index
+                    };
+                }
+            });
+
+            try {
+                // 设置总超时时间
+                const timeoutPromise = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error('查询超时')), 8000);
+                });
+                
+                // 使用Promise.race，要么所有API查询完成，要么超时
+                const results = await Promise.race([
+                    Promise.allSettled(promises),
+                    timeoutPromise
+                ]);
+                
+                // 处理结果
+                if (Array.isArray(results)) {
+                    results.forEach(result => {
+                        if (result.status === 'fulfilled' && result.value.success && result.value.data) {
+                            resultsWithPing.push(result.value);
+                        } else {
+                            // 即使是失败的节点，也记录下来，但标记为失败
+                            const apiInfo = allApis[result.value?.index || 0];
+                            resultsWithPing.push({ 
+                                apiName: apiInfo?.name || '未知API', 
+                                region: apiInfo?.region || 'unknown',
+                                ping: null, 
+                                data: null,
+                                success: false 
+                            });
+                        }
+                    });
+                }
+                
+                console.log(`查询完成，成功API数量: ${resultsWithPing.filter(r => r.success).length}/${allApis.length}`);
+                
+            } catch (error) {
+                console.error('查询超时:', error);
+                // 即使超时，也尝试显示已获取的结果
+            }
+
+            // 只要有成功结果就显示
+            if (resultsWithPing.some(item => item.success && item.data)) {
+                const merged = mergeApiResults(resultsWithPing);
+                if (merged && merged.data) {
+                    // 关键修改：只有当服务器在线时才显示完整信息
+                    if (merged.data.online) {
+                        displayResult(merged.data, merged.chinaMin, merged.chinaMax);
+                        displayPingAndApiDetails(resultsWithPing, merged.chinaMin, merged.chinaMax, merged.foreignAvg);
+                        // 传递总在线人数作为第二个参数
+                        displayPlayersList(merged.players, merged.data.players.now);
+                        
+                        // 更新状态栏延迟显示
+                        updateStatusPingDisplay();
+                        
+                        if (!isAutoRefresh) {
+                            addToHistory(res.fullAddress);
+                            // 首次查询后，记录当前查询地址并根据开关状态决定是否启动自动刷新
+                            currentQueryAddress = full;
+                            if (isAutoRefreshEnabled && autoRefreshToggle.checked) {
+                                startAutoRefresh();
+                            }
+                        }
+                        
+                        // 更新刷新时间
+                        updateLastRefreshTime();
+                    } else {
+                        // 服务器离线，显示离线状态
+                        displayOfflineResult();
+                        // 离线时停止自动刷新
+                        stopAutoRefresh();
+                        if (!isAutoRefresh) {
+                            addToHistory(res.fullAddress);
+                        }
+                    }
+                } else {
+                    if (!isAutoRefresh) {
+                        alert('服务器可能离线或不可访问');
+                        // 显示离线状态
+                        displayOfflineResult();
+                    }
+                }
+            } else {
+                if (!isAutoRefresh) {
+                    alert('无法获取服务器状态，请检查网络或稍后重试');
+                    // 显示错误状态
+                    onlineCountEl.textContent = '--';
+                    maxCountEl.textContent = '--';
+                    serverVersionEl.textContent = '错误';
+                    avgPingEl.textContent = '--';
+                    
+                    onlineCountEl.style.color = '#f59e0b';
+                    maxCountEl.style.color = '#f59e0b';
+                    serverVersionEl.style.color = '#f59e0b';
+                    avgPingEl.style.color = '#e0e0e0';
+                    
+                    // 查询失败时停止自动刷新
+                    stopAutoRefresh();
+                }
+            }
+
+            if (!isAutoRefresh) {
+                enableButtons();
+                queryBtn.innerHTML = '<span class="icon-emoji">🔍</span> 查询服务器';
+                // 隐藏刷新遮罩
+                refreshMask.classList.remove('active');
+            } else {
+                // 移除自动刷新指示器动画
+                refreshIndicator.classList.remove('refreshing');
+            }
+            
+            isRequesting = false;
+        }
+
+        // 显示离线结果
+        function displayOfflineResult() {
+            // 添加数值变化动画
+            onlineCountEl.classList.add('value-change');
+            maxCountEl.classList.add('value-change');
+            serverVersionEl.classList.add('value-change');
+            
+            setTimeout(() => {
+                onlineCountEl.classList.remove('value-change');
+                maxCountEl.classList.remove('value-change');
+                serverVersionEl.classList.remove('value-change');
+            }, 500);
+            
+            onlineCountEl.textContent = '0';
+            maxCountEl.textContent = '0';
+            serverVersionEl.textContent = '离线';
+            avgPingEl.textContent = '--';
+            
+            onlineCountEl.style.color = '#ef4444';
+            maxCountEl.style.color = '#ef4444';
+            serverVersionEl.style.color = '#ef4444';
+            avgPingEl.style.color = '#e0e0e0';
+            
+            // 清空延迟和API标签页的内容
+            pingApiContent.innerHTML = '<p style="color: #b0b0c0; text-align: center; margin-top: 20px;"><span class="icon-emoji">🔴</span> 服务器离线，无法获取延迟和API信息</p>';
+            
+            // 清空玩家列表标签页的内容
+            playersContent.innerHTML = '<p class="no-players"><span class="icon-emoji">🔴</span> 服务器离线，无玩家在线</p>';
+            playersCountEl.textContent = '0 位玩家';
+            
+            // 显示离线详情（头像尺寸统一为120px）
+            const serverDetailsHtml = `
+                <div class="server-details-header">
+                    <div class="server-avatar-name-row">
+                        <div class="server-avatar-container">
+                            <div class="no-icon" style="width: 120px; height: 120px; font-size: 2rem;"><span class="icon-emoji">🔴</span></div>
+                        </div>
+                        <div class="server-name-container">
+                            <div class="server-name">${currentAddress}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="server-details-grid">
+                    <div class="detail-item">
+                        <div class="detail-label"><span class="icon-emoji">📊</span> 服务器状态</div>
+                        <div class="detail-value offline">离线</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label"><span class="icon-emoji">👥</span> 当前/最大玩家</div>
+                        <div class="detail-value">0/0</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label"><span class="icon-emoji">🔧</span> 版本</div>
+                        <div class="detail-value">未知版本</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label"><span class="icon-emoji">🏗️</span> 平台类型</div>
+                        <div class="detail-value">未知</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label"><span class="icon-emoji">⏱️</span> 运行时间</div>
+                        <div class="detail-value">未知</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label"><span class="icon-emoji">🔢</span> 协议号</div>
+                        <div class="detail-value">未知</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label"><span class="icon-emoji">🌐</span> 服务器地址</div>
+                        <div class="detail-value" style="font-size: 1rem;">${currentAddress}</div>
+                    </div>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-header">
+                        <div class="progress-title"><span class="icon-emoji">📈</span> 服务器负载</div>
+                        <div class="progress-percentage">0%</div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 0%"></div>
+                    </div>
+                    <div class="progress-info">
+                        <span class="current">0 在线</span>
+                        <span class="max">0 最大</span>
+                    </div>
+                </div>
+            `;
+            
+            serverInfoContent.innerHTML = serverDetailsHtml;
+        }
+
+        // ==================== 显示函数 ====================
+        function displayResult(data, chinaMin, chinaMax) {
+            // 添加数值变化动画
+            onlineCountEl.classList.add('value-change');
+            maxCountEl.classList.add('value-change');
+            serverVersionEl.classList.add('value-change');
+            
+            setTimeout(() => {
+                onlineCountEl.classList.remove('value-change');
+                maxCountEl.classList.remove('value-change');
+                serverVersionEl.classList.remove('value-change');
+            }, 500);
+            
+            // 更新状态栏
+            if (data.online) {
+                onlineCountEl.textContent = data.players.now;
+                maxCountEl.textContent = data.players.max;
+                serverVersionEl.textContent = cleanMinecraftText(data.version.name);
+                
+                onlineCountEl.style.color = '#10b981';
+                maxCountEl.style.color = '#3b82f6';
+                serverVersionEl.style.color = '#a855f7';
+            } else {
+                onlineCountEl.textContent = '0';
+                maxCountEl.textContent = '0';
+                serverVersionEl.textContent = '离线';
+                
+                onlineCountEl.style.color = '#ef4444';
+                maxCountEl.style.color = '#ef4444';
+                serverVersionEl.style.color = '#ef4444';
+            }
+
+            // 更新服务器详情标签页
+            const versionName = cleanMinecraftText(data.version.name || '未知版本');
+            const protocol = data.protocol != null && !isNaN(data.protocol) ? data.protocol : '未知';
+            const platform = 'Java';
+            const serverName = data.serverName || currentAddress;
+            
+            // 计算进度条百分比
+            const nowPlayers = formatPlayerCount(data.players.now);
+            const maxPlayers = formatPlayerCount(data.players.max);
+            const progressPercentage = maxPlayers > 0 ? Math.round((nowPlayers / maxPlayers) * 100) : 0;
+            
+            // 构建服务器详情HTML
+            let serverDetailsHtml = '';
+            
+            if (data.online) {
+                // 服务器在线时显示服务器头像（头像尺寸统一为120px）
+                const avatarHtml = data.favicon 
+                    ? `<img src="${data.favicon}" alt="服务器头像" class="server-avatar" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\"no-icon\" style=\"width: 120px; height: 120px; font-size: 2rem;\"><span class=\"icon-emoji\">🎮</span></div>` 
+                    : '<div class="no-icon" style="width: 120px; height: 120px; font-size: 2rem;"><span class="icon-emoji">🎮</span></div>';
+                
+                // 检查是否有运行时间信息
+                const uptimeHtml = data.uptimeText && data.uptimeText !== '未知' 
+                    ? `<div class="detail-item">
+                          <div class="detail-label"><span class="icon-emoji">⏱️</span> 运行时间</div>
+                          <div class="detail-value uptime-value">${data.uptimeText}</div>
+                       </div>`
+                    : '';
+                
+                // 更新服务器详情HTML，将运行时间放在平台类型下面
+                serverDetailsHtml = `
+                    <div class="server-details-header">
+                        <div class="server-avatar-name-row">
+                            <div class="server-avatar-container">
+                                ${avatarHtml}
+                            </div>
+                            <div class="server-name-container">
+                                <div class="server-name">${serverName}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="server-details-grid">
+                        <div class="detail-item">
+                            <div class="detail-label"><span class="icon-emoji">📊</span> 服务器状态</div>
+                            <div class="detail-value online">在线</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label"><span class="icon-emoji">👥</span> 当前/最大玩家</div>
+                            <div class="detail-value">${nowPlayers}/${maxPlayers}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label"><span class="icon-emoji">🔧</span> 版本</div>
+                            <div class="detail-value">${versionName}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label"><span class="icon-emoji">🏗️</span> 平台类型</div>
+                            <div class="detail-value">${platform}</div>
+                        </div>
+                        ${uptimeHtml}
+                        <div class="detail-item">
+                            <div class="detail-label"><span class="icon-emoji">🔢</span> 协议号</div>
+                            <div class="detail-value">${protocol}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label"><span class="icon-emoji">🌐</span> 服务器地址</div>
+                            <div class="detail-value" style="font-size: 1rem;">${currentAddress}</div>
+                        </div>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-header">
+                            <div class="progress-title"><span class="icon-emoji">📈</span> 服务器负载</div>
+                            <div class="progress-percentage">${progressPercentage}%</div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${progressPercentage}%"></div>
+                        </div>
+                        <div class="progress-info">
+                            <span class="current">${nowPlayers} 在线</span>
+                            <span class="max">${maxPlayers} 最大</span>
+                        </div>
+                    </div>
+                `;
+            } else {
+                // 服务器离线时，调用displayOfflineResult而不是在这里处理
+                return;
+            }
+            
+            serverInfoContent.innerHTML = serverDetailsHtml;
+        }
+
+        // 更新状态栏延迟显示
+        function updateStatusPingDisplay() {
+            if (avgPing !== null) {
+                // 添加数值变化动画
+                avgPingEl.classList.add('value-change');
+                setTimeout(() => {
+                    avgPingEl.classList.remove('value-change');
+                }, 500);
+                
+                avgPingEl.textContent = `${avgPing}ms`;
+                
+                // 根据延迟数值设置颜色
+                const pingClass = getPingColorClass(avgPing);
+                avgPingEl.className = `status-value ${pingClass}`;
+            } else {
+                avgPingEl.textContent = '--';
+                avgPingEl.className = 'status-value';
+                avgPingEl.style.color = '#e0e0e0';
+            }
+        }
+
+        // 获取ping颜色分类
+        function getPingColorClass(ping) {
+            if (ping === null) return '';
+            if (ping < 100) return 'ping-good';
+            if (ping < 200) return 'ping-medium';
+            return 'ping-bad';
+        }
+
+        // 显示延迟和API详情
+        function displayPingAndApiDetails(results, chinaMin, chinaMax, foreignAvg) {
+            let pingApiHtml = '';
+            
+            // 计算成功节点数量
+            // 注意：现在有15个国内API，10个国外API
+            const domesticSuccessCount = results.filter((r, idx) => idx < 15 && r.success && r.ping !== null && r.data && r.data.online).length;
+            const foreignSuccessCount = results.filter((r, idx) => idx >= 15 && idx < 25 && r.success && r.ping !== null && r.data && r.data.online).length;
+            const customSuccessCount = results.filter((r, idx) => idx >= 25 && r.success && r.ping !== null && r.data && r.data.online).length;
+            const totalSuccessCount = domesticSuccessCount + foreignSuccessCount + customSuccessCount;
+            const totalApis = results.length;
+            
+            if (results.length === 0) {
+                pingApiHtml = '<p style="color: #b0b0c0; text-align: center;"><span class="icon-emoji">⚠️</span> 无法获取延迟和API信息</p>';
+                pingApiContent.innerHTML = pingApiHtml;
+                return;
+            }
+            
+            // 节点统计
+            pingApiHtml += `
+                <div class="node-stats">
+                    <div class="node-stat-item">
+                        <div class="node-stat-value">${domesticSuccessCount}/15</div>
+                        <div class="node-stat-label"><span class="icon-emoji">🇨🇳</span> 国内节点成功</div>
+                    </div>
+                    <div class="node-stat-item">
+                        <div class="node-stat-value">${foreignSuccessCount}/10</div>
+                        <div class="node-stat-label"><span class="icon-emoji">🌍</span> 国外节点成功</div>
+                    </div>
+                    <div class="node-stat-item">
+                        <div class="node-stat-value">${customSuccessCount}/${customApis.filter(a => a.enabled).length}</div>
+                        <div class="node-stat-label"><span class="icon-emoji">🔧</span> 自定义节点成功</div>
+                    </div>
+                    <div class="node-stat-item">
+                        <div class="node-stat-value">${totalSuccessCount}/${totalApis}</div>
+                        <div class="node-stat-label"><span class="icon-emoji">📊</span> 总成功节点</div>
+                    </div>
+                </div>
+            `;
+            
+            // 延迟汇总部分
+            pingApiHtml += `
+                <div class="ping-section">
+                    <div class="section-title"><span class="icon-emoji">⚡</span> 延迟汇总</div>
+                    <div class="ping-summary">
+            `;
+            
+            // 国内延迟
+            if (chinaMin !== null && chinaMax !== null) {
+                pingApiHtml += `
+                    <div class="summary-item">
+                        <div class="summary-label"><span class="icon-emoji">🇨🇳</span> 国内延迟 (平均)</div>
+                        <div class="summary-value ${getPingColorClass(avgPing)}">${avgPing}ms</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label"><span class="icon-emoji">📏</span> 国内延迟 (范围)</div>
+                        <div class="summary-value ${getPingColorClass(chinaMin)}">${chinaMin}ms - ${chinaMax}ms</div>
+                    </div>
+                `;
+            } else {
+                pingApiHtml += `
+                    <div class="summary-item">
+                        <div class="summary-label"><span class="icon-emoji">🇨🇳</span> 国内延迟</div>
+                        <div class="summary-value ping-bad">无法获取</div>
+                    </div>
+                `;
+            }
+            
+            // 国外延迟
+            if (foreignAvg !== null) {
+                pingApiHtml += `
+                    <div class="summary-item">
+                        <div class="summary-label"><span class="icon-emoji">🌍</span> 国外延迟 (平均)</div>
+                        <div class="summary-value ${getPingColorClass(foreignAvg)}">${foreignAvg}ms</div>
+                    </div>
+                `;
+            } else {
+                pingApiHtml += `
+                    <div class="summary-item">
+                        <div class="summary-label"><span class="icon-emoji">🌍</span> 国外延迟</div>
+                        <div class="summary-value ping-bad">无法获取</div>
+                    </div>
+                `;
+            }
+            
+            pingApiHtml += `
+                    </div>
+                </div>
+            `;
+            
+            // 国内API状态详情 - 可折叠面板
+            if (domesticSuccessCount > 0 || results.slice(0, 15).some(r => !r.success)) {
+                pingApiHtml += `
+                    <div class="api-group-panel" id="domestic-api-panel">
+                        <div class="api-group-header" data-target="domestic-api-content">
+                            <div class="api-group-title-wrapper">
+                                <span class="api-group-title"><span class="icon-emoji">🇨🇳</span> 国内API状态</span>
+                                <span class="api-group-stats">${domesticSuccessCount}/15 成功</span>
+                            </div>
+                            <div class="collapse-icon domestic-api-arrow">▼</div>
+                        </div>
+                        <div class="api-group-content" id="domestic-api-content">
+                            <div class="api-grid">
+                `;
+                
+                // 国内API状态详情
+                results.slice(0, 15).forEach((result, index) => {
+                    const regionText = '国内';
+                    const regionClass = 'domestic';
+                    
+                    if (result.success && result.data) {
+                        const status = result.data.online ? 'online' : 'offline';
+                        const statusText = result.data.online ? '在线' : '离线';
+                        const pingText = result.ping !== null ? `${result.ping}ms` : '--';
+                        const pingClass = getPingColorClass(result.ping);
+                        
+                        pingApiHtml += `
+                            <div class="api-item" style="animation-delay: ${index * 0.05}s">
+                                <div class="api-info">
+                                    <span class="api-name"><span class="custom-icon">🌐</span> ${result.apiName}</span>
+                                    <span class="api-region ${regionClass}">${regionText}</span>
+                                </div>
+                                <div class="api-status">
+                                    <div class="status-indicator ${status}" title="${statusText}"></div>
+                                    <span class="ping-value ${pingClass}">${pingText}</span>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        pingApiHtml += `
+                            <div class="api-item" style="animation-delay: ${index * 0.05}s">
+                                <div class="api-info">
+                                    <span class="api-name"><span class="custom-icon">🌐</span> ${result.apiName}</span>
+                                    <span class="api-region ${regionClass}">${regionText}</span>
+                                </div>
+                                <div class="api-status">
+                                    <div class="status-indicator error" title="请求失败"></div>
+                                    <span class="ping-value ping-bad">失败</span>
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+                
+                pingApiHtml += `
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // 国外API状态详情 - 可折叠面板
+            if (foreignSuccessCount > 0 || results.slice(15, 25).some(r => !r.success)) {
+                pingApiHtml += `
+                    <div class="api-group-panel" id="foreign-api-panel">
+                        <div class="api-group-header" data-target="foreign-api-content">
+                            <div class="api-group-title-wrapper">
+                                <span class="api-group-title"><span class="icon-emoji">🌍</span> 国外API状态</span>
+                                <span class="api-group-stats">${foreignSuccessCount}/10 成功</span>
+                            </div>
+                            <div class="collapse-icon foreign-api-arrow">▼</div>
+                        </div>
+                        <div class="api-group-content" id="foreign-api-content">
+                            <div class="api-grid">
+                `;
+                
+                // 国外API状态详情
+                results.slice(15, 25).forEach((result, index) => {
+                    const regionText = '国外';
+                    const regionClass = 'foreign';
+                    
+                    if (result.success && result.data) {
+                        const status = result.data.online ? 'online' : 'offline';
+                        const statusText = result.data.online ? '在线' : '离线';
+                        const pingText = result.ping !== null ? `${result.ping}ms` : '--';
+                        const pingClass = getPingColorClass(result.ping);
+                        
+                        pingApiHtml += `
+                            <div class="api-item" style="animation-delay: ${index * 0.05}s">
+                                <div class="api-info">
+                                    <span class="api-name"><span class="custom-icon">🌐</span> ${result.apiName}</span>
+                                    <span class="api-region ${regionClass}">${regionText}</span>
+                                </div>
+                                <div class="api-status">
+                                    <div class="status-indicator ${status}" title="${statusText}"></div>
+                                    <span class="ping-value ${pingClass}">${pingText}</span>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        pingApiHtml += `
+                            <div class="api-item" style="animation-delay: ${index * 0.05}s">
+                                <div class="api-info">
+                                    <span class="api-name"><span class="custom-icon">🌐</span> ${result.apiName}</span>
+                                    <span class="api-region ${regionClass}">${regionText}</span>
+                                </div>
+                                <div class="api-status">
+                                    <div class="status-indicator error" title="请求失败"></div>
+                                    <span class="ping-value ping-bad">失败</span>
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+                
+                pingApiHtml += `
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // 自定义API状态详情
+            if (customSuccessCount > 0 || results.slice(25).some(r => !r.success)) {
+                pingApiHtml += `
+                    <div class="ping-section">
+                        <div class="section-title"><span class="icon-emoji">🔧</span> 自定义API状态 (${customSuccessCount}/${customApis.filter(a => a.enabled).length} 成功)</div>
+                        <div class="api-grid">
+                `;
+                
+                // 自定义API状态详情
+                results.slice(25).forEach((result, index) => {
+                    const regionText = '自定义';
+                    const regionClass = 'custom';
+                    
+                    if (result.success && result.data) {
+                        const status = result.data.online ? 'online' : 'offline';
+                        const statusText = result.data.online ? '在线' : '离线';
+                        const pingText = result.ping !== null ? `${result.ping}ms` : '--';
+                        const pingClass = getPingColorClass(result.ping);
+                        
+                        pingApiHtml += `
+                            <div class="api-item" style="animation-delay: ${index * 0.05}s">
+                                <div class="api-info">
+                                    <span class="api-name"><span class="custom-icon">🔧</span> ${result.apiName}</span>
+                                    <span class="api-region ${regionClass}">${regionText}</span>
+                                </div>
+                                <div class="api-status">
+                                    <div class="status-indicator ${status}" title="${statusText}"></div>
+                                    <span class="ping-value ${pingClass}">${pingText}</span>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        pingApiHtml += `
+                            <div class="api-item" style="animation-delay: ${index * 0.05}s">
+                                <div class="api-info">
+                                    <span class="api-name"><span class="custom-icon">🔧</span> ${result.apiName}</span>
+                                    <span class="api-region ${regionClass}">${regionText}</span>
+                                </div>
+                                <div class="api-status">
+                                    <div class="status-indicator error" title="请求失败"></div>
+                                    <span class="ping-value ping-bad">失败</span>
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+                
+                pingApiHtml += `
+                        </div>
+                    </div>
+                `;
+            }
+            
+            pingApiContent.innerHTML = pingApiHtml;
+            
+            // 为可折叠面板添加事件监听器
+            setupCollapsiblePanels();
+        }
+
+        // 设置可折叠面板的事件监听器
+        function setupCollapsiblePanels() {
+            // 国内API状态面板
+            const domesticHeader = document.querySelector('#domestic-api-panel .api-group-header');
+            const domesticContent = document.getElementById('domestic-api-content');
+            const domesticArrow = document.querySelector('.domestic-api-arrow');
+            
+            if (domesticHeader && domesticContent) {
+                domesticHeader.addEventListener('click', () => {
+                    isDomesticApiExpanded = !isDomesticApiExpanded;
+                    
+                    if (isDomesticApiExpanded) {
+                        domesticContent.classList.add('expanded');
+                        domesticArrow.classList.add('expanded');
+                    } else {
+                        domesticContent.classList.remove('expanded');
+                        domesticArrow.classList.remove('expanded');
+                    }
+                });
+                
+                // 默认不展开
+                domesticContent.classList.remove('expanded');
+                domesticArrow.classList.remove('expanded');
+                isDomesticApiExpanded = false;
+            }
+            
+            // 国外API状态面板
+            const foreignHeader = document.querySelector('#foreign-api-panel .api-group-header');
+            const foreignContent = document.getElementById('foreign-api-content');
+            const foreignArrow = document.querySelector('.foreign-api-arrow');
+            
+            if (foreignHeader && foreignContent) {
+                foreignHeader.addEventListener('click', () => {
+                    isForeignApiExpanded = !isForeignApiExpanded;
+                    
+                    if (isForeignApiExpanded) {
+                        foreignContent.classList.add('expanded');
+                        foreignArrow.classList.add('expanded');
+                    } else {
+                        foreignContent.classList.remove('expanded');
+                        foreignArrow.classList.remove('expanded');
+                    }
+                });
+                
+                // 默认不展开
+                foreignContent.classList.remove('expanded');
+                foreignArrow.classList.remove('expanded');
+                isForeignApiExpanded = false;
+            }
+        }
+
+        // 显示在线玩家列表
+        function displayPlayersList(players, totalOnline = 0) {
+            if (!players || players.length === 0) {
+                playersContent.innerHTML = '<p class="no-players"><span class="icon-emoji">👀</span> 暂无在线玩家</p>';
+                playersCountEl.textContent = '0 位玩家';
+                return;
+            }
+            
+            // 如果玩家列表数量明显少于总在线人数，显示提示
+            let showPartialWarning = false;
+            if (totalOnline > 0 && players.length < totalOnline && players.length < 50) {
+                // 只显示部分玩家，添加警告
+                showPartialWarning = true;
+            }
+            
+            playersCountEl.textContent = `${players.length} 位玩家${showPartialWarning ? ' (部分)' : ''}`;
+            
+            let playersHtml = '';
+            
+            if (showPartialWarning) {
+                playersHtml += `
+                    <div class="partial-warning">
+                        <div class="partial-warning-title">
+                            <span style="font-size: 1.2rem; margin-right: 5px;">⚠</span> 注意
+                        </div>
+                        <div class="partial-warning-content">
+                            由于服务器在线玩家数量较多 (${totalOnline})，部分API只返回了前 ${players.length} 位玩家。完整列表可能需要直接连接服务器查看。
+                        </div>
+                    </div>
+                `;
+            }
+            
+            playersHtml += '<div class="player-grid">';
+            
+            players.forEach((player, index) => {
+                const playerName = player.name || '未知玩家';
+                
+                playersHtml += `
+                    <div class="player-card" title="${playerName}" style="animation-delay: ${index * 0.05}s">
+                        <div class="player-name">${playerName}</div>
+                    </div>
+                `;
+            });
+            
+            playersHtml += '</div>';
+            playersContent.innerHTML = playersHtml;
+        }
+
+        // ==================== 自动刷新控制 ====================
+        function startAutoRefresh() {
+            if (refreshInterval) clearInterval(refreshInterval);
+            
+            // 使用用户设置的刷新间隔
+            const interval = refreshIntervalSeconds * 1000;
+            
+            refreshInterval = setInterval(() => {
+                // 只有当输入框的地址与当前查询的地址相同时才自动刷新
+                if (ipInput.value.trim() === currentQueryAddress && !isRequesting) {
+                    queryServerStatus(true);
+                }
+            }, interval);
+            
+            refreshIndicator.classList.remove('inactive');
+            refreshStatus.textContent = `自动刷新已启用 (${refreshIntervalSeconds}秒)`;
+            isAutoRefreshEnabled = true;
+        }
+
+        function stopAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+                refreshIndicator.classList.add('inactive');
+                refreshStatus.textContent = '自动刷新已停止';
+                isAutoRefreshEnabled = false;
+            }
+        }
+        
+        // 切换自动刷新状态
+        function toggleAutoRefresh() {
+            const isChecked = autoRefreshToggle.checked;
+            
+            // 保存开关状态到本地存储
+            localStorage.setItem(AUTO_REFRESH_TOGGLE_KEY, isChecked);
+            
+            if (isChecked) {
+                // 如果开关打开，且有当前查询地址，则启动自动刷新
+                if (currentQueryAddress && ipInput.value.trim() === currentQueryAddress) {
+                    startAutoRefresh();
+                } else {
+                    // 没有查询地址，仅更新状态
+                    refreshIndicator.classList.remove('inactive');
+                    refreshStatus.textContent = `自动刷新已启用 (${refreshIntervalSeconds}秒)`;
+                    isAutoRefreshEnabled = true;
+                }
+            } else {
+                // 如果开关关闭，则停止自动刷新
+                stopAutoRefresh();
+            }
+        }
+        
+        // 更新刷新间隔
+        function updateRefreshInterval() {
+            let newInterval = parseInt(refreshIntervalInput.value);
+            
+            // 验证输入值
+            if (isNaN(newInterval) || newInterval < 1) {
+                newInterval = 5;
+                refreshIntervalInput.value = 5;
+            } else if (newInterval > 60) {
+                newInterval = 60;
+                refreshIntervalInput.value = 60;
+            }
+            
+            // 更新刷新间隔
+            refreshIntervalSeconds = newInterval;
+            
+            // 保存到本地存储
+            localStorage.setItem(REFRESH_INTERVAL_KEY, newInterval.toString());
+            
+            // 如果自动刷新正在运行，则重启自动刷新以应用新的间隔
+            if (isAutoRefreshEnabled && autoRefreshToggle.checked && refreshInterval) {
+                startAutoRefresh();
+            }
+            
+            // 更新状态文本
+            if (isAutoRefreshEnabled) {
+                refreshStatus.textContent = `自动刷新已启用 (${refreshIntervalSeconds}秒)`;
+            }
+        }
+
+        // ==================== UI控制函数 ====================
+        function disableButtons() {
+            queryBtn.disabled = true;
+            clearBtn.disabled = true;
+            addCustomApiBtn.disabled = true;
+        }
+
+        function enableButtons() {
+            queryBtn.disabled = false;
+            clearBtn.disabled = false;
+            addCustomApiBtn.disabled = false;
+        }
+
+        function clearResults() {
+            // 重置状态显示
+            onlineCountEl.textContent = '--';
+            maxCountEl.textContent = '--';
+            serverVersionEl.textContent = '--';
+            avgPingEl.textContent = '--';
+            
+            onlineCountEl.style.color = '#e0e0e0';
+            maxCountEl.style.color = '#e0e0e0';
+            serverVersionEl.style.color = '#e0e0e0';
+            avgPingEl.style.color = '#e0e0e0';
+            
+            // 清空内容
+            serverInfoContent.innerHTML = '<p style="color: #b0b0c0; text-align: center; margin-top: 20px;"><span class="icon-emoji">🔍</span> 请先查询服务器获取详情</p>';
+            pingApiContent.innerHTML = '<p style="color: #b0b0c0; text-align: center; margin-top: 20px;"><span class="icon-emoji">📊</span> 请先查询服务器获取延迟和API信息</p>';
+            playersContent.innerHTML = '<p class="no-players"><span class="icon-emoji">👀</span> 请先查询服务器获取玩家信息</p>';
+            playersCountEl.textContent = '0 位玩家';
+            playersList = [];
+            avgPing = null;
+            serverName = '';
+            serverIcon = '';
+        }
+
+        // ==================== 事件监听器 ====================
+        // 标签页切换
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                tabBtns.forEach(b => b.classList.remove('active'));
+                tabContents.forEach(content => content.classList.add('hidden'));
+                
+                this.classList.add('active');
+                const tabId = this.dataset.tab + '-tab';
+                document.getElementById(tabId).classList.remove('hidden');
+            });
+        });
+
+        // 查询按钮
+        queryBtn.addEventListener('click', () => {
+            queryServerStatus(false);
+        });
+
+        // 清除地址按钮
+        clearBtn.addEventListener('click', () => {
+            ipInput.value = '';
+            ipInput.focus();
+            stopAutoRefresh();
+            clearResults();
+        });
+
+        // 清空历史记录按钮
+        clearHistoryBtn.addEventListener('click', () => {
+            if (confirm('确定要清空所有查询历史吗？')) {
+                clearHistory();
+            }
+        });
+
+        // 回车键查询
+        ipInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                queryServerStatus(false);
+            }
+        });
+
+        // 监听输入框变化，当内容变化时停止自动刷新
+        ipInput.addEventListener('input', () => {
+            // 只有当输入框内容与当前查询地址不同时才停止刷新
+            if (ipInput.value.trim() !== currentQueryAddress) {
+                stopAutoRefresh();
+                clearResults();
+                // 清空当前查询地址
+                currentQueryAddress = '';
+            }
+        });
+
+        // 自动刷新开关事件
+        autoRefreshToggle.addEventListener('change', () => {
+            toggleAutoRefresh();
+        });
+
+        // 刷新间隔输入框事件
+        refreshIntervalInput.addEventListener('change', () => {
+            updateRefreshInterval();
+        });
+        
+        // 输入框失去焦点时也更新
+        refreshIntervalInput.addEventListener('blur', () => {
+            updateRefreshInterval();
+        });
+        
+        // 按回车键时更新
+        refreshIntervalInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                updateRefreshInterval();
+            }
+        });
+
+        // 自定义API面板折叠功能
+        customApiHeader.addEventListener('click', () => {
+            toggleCustomApiPanel();
+        });
+
+        // 添加自定义API按钮
+        addCustomApiBtn.addEventListener('click', () => {
+            const name = customApiNameInput.value;
+            const url = customApiUrlInput.value;
+            
+            if (addCustomApi(name, url)) {
+                alert('自定义API添加成功！');
+            }
+        });
+
+        // 也可以按Enter键添加自定义API
+        customApiNameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                addCustomApiBtn.click();
+            }
+        });
+        
+        customApiUrlInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                addCustomApiBtn.click();
+            }
+        });
+
+        // ==================== 初始化 ====================
+        window.addEventListener('load', () => {
+            renderHistory();
+            loadCustomApis();
+            
+            // 初始状态为停止自动刷新
+            refreshIndicator.classList.add('inactive');
+            refreshStatus.textContent = '自动刷新已停止';
+            isAutoRefreshEnabled = false;
+            
+            // 初始化自定义API面板为折叠状态
+            customApiContent.classList.remove('expanded');
+            customApiArrow.classList.remove('expanded');
+            isCustomApiExpanded = false;
+            
+            // 清空可能存在的自动刷新状态存储，确保默认关闭
+            localStorage.removeItem(AUTO_REFRESH_TOGGLE_KEY);
+            autoRefreshToggle.checked = false;
+            
+            // 加载刷新间隔设置
+            const savedInterval = localStorage.getItem(REFRESH_INTERVAL_KEY);
+            if (savedInterval !== null) {
+                const interval = parseInt(savedInterval);
+                if (!isNaN(interval) && interval >= 1 && interval <= 60) {
+                    refreshIntervalSeconds = interval;
+                    refreshIntervalInput.value = interval;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
